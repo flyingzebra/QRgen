@@ -22,7 +22,7 @@ flowchart TB
     end
 
     subgraph L2["LAYER 2 — Data encoding"]
-        direction RL
+        direction LR
         D["Terminator bits"]
         E["Byte alignment"]
         F["Padding bytes: EC / 11"]
@@ -40,7 +40,7 @@ flowchart TB
     end
 
     subgraph L4["LAYER 4 — Structural patterns"]
-        direction RL
+        direction LR
         P1["Finder patterns: 3 × 7×7"]
         P2["Light separators"]
         P3["Timing patterns"]
@@ -59,7 +59,7 @@ flowchart TB
     end
 
     subgraph L6["LAYER 6 — Data masking"]
-        direction RL
+        direction LR
         N1["Apply each of 8 candidate masks"]
         N2["Evaluate penalty rules N1–N4"]
         N3["Select best mask"]
@@ -76,7 +76,7 @@ flowchart TB
     end
 
     subgraph L8["LAYER 8 — Final symbol"]
-        direction RL
+        direction LR
         R1["Completed QR module matrix"]
         R2["Quiet zone: 4 modules on each side"]
         R3["Render SVG / PNG / canvas"]
