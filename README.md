@@ -8,6 +8,7 @@
 <a href="https://flyingzebra.github.io/QRgen/tools/padding_calculator.html">QR padding calculator</a>
 
 
+
 ![Eight-stage QR encoder pipeline](tools/assets/qr-encoding-pipeline.svg)
 
 
