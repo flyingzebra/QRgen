@@ -1,5 +1,10 @@
 # QR_generator
 
+## Complete documentation
+
+[QR Code Model 2 construction guide](docs/QR_CODE_CONSTRUCTION.md) — comprehensive implementation reference, all 40 alignment layouts, 160 ECC configurations, all BCH format/version words, and eight original diagrams in [`assets/`](assets/).
+
+
 <a href="https://flyingzebra.github.io/QR_generator/tools/padding_calculator.html">QR padding calculator</a>
 
 
@@ -17,7 +22,7 @@ https://www.thonky.com/qr-code-tutorial/format-version-information
 # reed-solomon
 
 k = unencoded message length  
-n = encoded message length 
+n = encoded message length  
 m = symbol size in bits  
 d = hamming distance  
 t = number of correctable symbols
