@@ -95,14 +95,26 @@ function Finder_pattern()
 
 function Alignment_pattern()
 {
-  for(var i=6;i<_this.modules-1;i+=12)
+  const positions = tbl[_this.version];
+  const last = positions.length - 1;
+
+  for (let r = 0; r < positions.length; r++)
   {
-    for(var j=6;j<_this.modules-1;j+=12)
+    for (let c = 0; c < positions.length; c++)
     {
-      _this.setPix(i,j,true);
-      drawSQR(i,j,3,false);
-      drawSQR(i,j,5,true);
-      }
+      // Exclude finder-pattern locations
+      if ((r === 0 && c === 0) ||
+          (r === 0 && c === last) ||
+          (r === last && c === 0))
+        continue;
+
+      const x = positions[c];
+      const y = positions[r];
+
+      _this.setPix(x, y, true);
+      drawSQR(x, y, 3, false);
+      drawSQR(x, y, 5, true);
+    }
   }
 }
 
