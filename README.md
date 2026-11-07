@@ -43,8 +43,8 @@ flowchart TB
         direction LR
         P1["Finder patterns: 3 × 7×7"]
         P2["Light\nseparators"]
-        P3["Timing patterns"]
-        P4["Alignment patterns: 5×5"]
+        P3["Timing\npatterns"]
+        P4["Alignment\npatterns: 5×5"]
         P5["Reserve metadata positions"]
         P6["Fixed dark module"]
         P1 --> P2 --> P3 --> P4 --> P5 --> P6
