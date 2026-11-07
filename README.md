@@ -9,7 +9,7 @@
 
 
 
-‘‘‘mermaid
+```mermaid
 
 flowchart TB
     subgraph L1["LAYER 1 — Input and segmentation"]
@@ -89,7 +89,7 @@ flowchart TB
     N3 --> Q1
     N3 --> Q4
     Q4 --> R1
-‘‘‘
+```
 
 
 
