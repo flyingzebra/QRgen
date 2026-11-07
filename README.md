@@ -5,7 +5,7 @@
 [QR Code Model construction guide](docs/QR_CODE_CONSTRUCTION.md) — comprehensive implementation reference, all 40 alignment layouts, 160 ECC configurations, and all BCH format/version words.
 
 
-<a href="https://flyingzebra.github.io/QRgen/tools/padding_calculator.htmlpadding_calculator.html">QR padding calculator</a>
+<a href="https://flyingzebra.github.io/QRgen/tools/padding_calculator.html">QR padding calculator</a>
 
 
 
