@@ -1,4 +1,4 @@
-# QR_generator
+# QR generator
 
 ## Complete documentation
 
