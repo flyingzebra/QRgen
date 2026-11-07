@@ -41,7 +41,7 @@ flowchart TB
 
     subgraph L4["LAYER 4 — Structural patterns"]
         direction LR
-        P1["Finder patterns: 3 × 7×7"]
+        P1["Finder\npatterns: 3 × 7×7"]
         P2["Light\nseparators"]
         P3["Timing\npatterns"]
         P4["Alignment\npatterns: 5×5"]
