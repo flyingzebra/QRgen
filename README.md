@@ -9,7 +9,7 @@
 
 
 
-![Eight-stage QR encoder pipeline](tools/assets/qr-encoding-pipeline.svg)
+![Eight-stage QR encoder pipeline](docs/assets/qr-encoding-pipeline.svg)
 
 
 ```mermaid
