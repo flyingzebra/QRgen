@@ -48,7 +48,7 @@ flowchart LR
     linkStyle default stroke:#475569,stroke-width:2px;
 ```
 
-### 1.1 Detailed process
+**Detailed process**
 
 ```mermaid
 
