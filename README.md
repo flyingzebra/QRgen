@@ -2,7 +2,7 @@
 
 ## Presentation
 
-QRgen is a standalone, browser-based application for generating version 2 QR codes. Its purpose is to make the underlying construction process transparent by presenting the encoder as eight distinct stages. Each stage builds on the previous stage, and the stages can be tested independently in the QR Code Lab. This approach helps explain the formulas and algorithms involved in turning input data into a QR code.
+QRgen is a standalone, browser-based construction set for generating version 2 QR codes. Its purpose is to make the underlying construction process transparent and comprehensive by presenting the encoder as eight distinct stages. Each stage builds on the previous stage, and the stages can be tested independently in the QR Code Lab. Even though we are demonstrating each step in easy readable vanilla JavaScript, this approach helps explain the formulas and algorithms involved in turning input data into a QR code, without too much focus on programming language specifics.
 
 ![Eight-stage QR encoder pipeline](docs/assets/qr-encoding-pipeline.svg)
 
@@ -31,6 +31,10 @@ The infographic below shows the same eight stages in order, from the input data 
 ## Documentation
 
 The [QR Code Model construction guide](docs/QR_CODE_CONSTRUCTION.md) provides a comprehensive implementation reference, including the alignment-pattern layouts for all 40 versions, 160 error-correction configurations, and BCH-encoded format and version information.
+
+## QR Code Lab
+
+<a href=><img src=res/VintageLab256.png></a>
 
 ## Tools and references
 
