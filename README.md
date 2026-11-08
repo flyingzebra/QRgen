@@ -32,6 +32,10 @@ The infographic below shows the same eight stages in order, from the input data 
 
 The [QR Code Model construction guide](docs/QR_CODE_CONSTRUCTION.md) provides a comprehensive implementation reference, including the alignment-pattern layouts for all 40 versions, 160 error-correction configurations, and BCH-encoded format and version information.
 
+## QR Code Lab
+
+<a href=><img src=res/VintageLab256.png></a>
+
 ## Tools and references
 
 - [QR padding calculator](https://flyingzebra.github.io/QRgen/tools/padding_calculator.html)
