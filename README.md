@@ -38,6 +38,7 @@ The [QR Code Model construction guide](docs/QR_CODE_CONSTRUCTION.md) provides a 
 
 ## Tools and references
 
+- [Layer 1 — Input and Segmentation Lab](tools/layer1_encoder.html) — fully offline HTML tool; mode selection, optimized segments and exact payload bitstream.
 - [QR padding calculator](https://flyingzebra.github.io/QRgen/tools/padding_calculator.html)
 - [QR code tutorial: format and version information](https://www.thonky.com/qr-code-tutorial/format-version-information)
 - [Online BCH code generator](http://www.ece.unb.ca/cgi-bin/tervo/bch.pl)

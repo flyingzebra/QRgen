@@ -471,24 +471,27 @@ var qrcode = function() {
 
     _this.createUTF8 = function(cellSize, margin) {
 
-      cellSize = cellSize || 2;
-      margin = (typeof margin == 'undefined')? cellSize * 4 : margin;
+      // Render each module in a square CSS cell; Unicode font metrics do not
+      // guarantee square glyphs, even when the characters have equal widths.
+      cellSize = Math.max(1, Math.round(Number(cellSize) || 16));
 
-      // Both module colours use the same Unicode glyph, so the browser
-      // cannot assign a different advance width to light and dark modules.
-      var qrHtml = '<div style="font-family:monospace;white-space:nowrap;'
-        + 'letter-spacing:0;line-height:1;">';
+      var qrHtml = '<div style="display:inline-block;font-size:0;line-height:0;'
+        + 'background:white;">';
 
       for (var r = 0; r < _this.getModuleCount(); r += 1) {
 
+        qrHtml += '<div style="display:flex;height:' + cellSize + 'px;">';
+
         for (var c = 0; c < _this.getModuleCount(); c += 1) {
 
-          qrHtml += _this.isDark(r, c)
-            ? '<span style="color:black">&#9608;</span>'
-            : '<span style="color:white">&#9608;</span>';
+          var dark = _this.isDark(r, c);
+          qrHtml += '<span style="display:block;flex:0 0 ' + cellSize + 'px;'
+            + 'width:' + cellSize + 'px;height:' + cellSize + 'px;'
+            + 'background:' + (dark ? '#000' : '#fff') + ';font-size:0;">'
+            + (dark ? '&#9608;' : '&nbsp;') + '</span>';
         }
 
-        qrHtml += '<br>';
+        qrHtml += '</div>';
       }
       return qrHtml + '</div>';
     };

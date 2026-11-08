@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>QRgen Lab — Layer 1: Input and Segmentation</title>
+<style>
+:root{color-scheme:light;--ink:#152236;--muted:#52627b;--line:#d7e0ed;--soft:#f2f6fb;--blue:#265fc4;--good:#14663d;--warn:#965200;--bad:#ae2332;--panel:#fff;--purple:#714eb0}
+*{box-sizing:border-box}body{margin:0;color:var(--ink);background:#eef3fa;font:15px/1.45 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+header{background:linear-gradient(115deg,#172b52,#254f92);color:white;padding:24px max(22px,calc((100% - 1260px)/2));box-shadow:0 3px 14px #182b4a25}
+header h1{font-size:clamp(24px,3vw,34px);line-height:1.15;margin:4px 0 10px}header p{margin:0;color:#e5efff;max-width:990px}header .eyebrow{font-weight:750;color:#b9ddff;letter-spacing:.08em;text-transform:uppercase;font-size:12px}
+main{max-width:1304px;margin:22px auto 52px;padding:0 20px}a{color:var(--blue)}.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;margin:0 0 17px;box-shadow:0 2px 7px #20385409}.panel h2{font-size:18px;margin:0 0 13px}.split{display:grid;grid-template-columns:minmax(310px,1.35fr) minmax(290px,1fr);gap:18px}.field-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.input-block{margin:0 0 14px}label{font-weight:700;display:block;margin:0 0 6px}input,select,textarea,button{font:inherit}textarea,select,input[type="number"]{width:100%;border:1px solid #aebed3;border-radius:7px;color:var(--ink);background:white;padding:10px 11px}textarea:focus,select:focus,button:focus-visible{outline:3px solid #8bb9ff;outline-offset:1px}textarea{resize:vertical;min-height:118px;font-family:ui-monospace,Consolas,Monaco,monospace;font-size:13px}.hint{font-size:12px;color:var(--muted);margin:5px 0 0}.small{font-size:13px;color:var(--muted)}.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.toolbar button,.action{cursor:pointer;border:1px solid #bdcbe0;border-radius:7px;padding:8px 12px;color:#214779;background:#f6f9ff;font-size:13px;font-weight:650}.toolbar button:hover,.action:hover{background:#e6efff}.primary{background:#245fbd;color:white;border-color:#245fbd}.primary:hover{background:#164d9d}.toolbar button:disabled{opacity:.45;cursor:not-allowed}.hidden{display:none!important}.checkbox-line{display:flex;gap:9px;align-items:center;margin:10px 0;font-weight:550}.checkbox-line input{accent-color:var(--blue)}.status{padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--soft);margin-bottom:12px}.status.good{background:#ecfaf1;border-color:#a5dac0;color:var(--good)}.status.warning{background:#fff7e8;border-color:#f6d493;color:var(--warn)}.status.error{background:#fff1f2;border-color:#f0bec5;color:var(--bad)}.status:empty{display:none}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:13px}.stat{border:1px solid var(--line);border-radius:8px;background:#f8fbff;padding:11px;min-width:0}.stat .value{display:block;font-weight:750;font-size:21px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.stat .name{font-size:12px;color:var(--muted)}.progress{height:11px;background:#e7edf7;border-radius:999px;overflow:hidden;margin:8px 0 6px}.progress>div{height:100%;width:0%;background:#3c82e1;transition:width .15s}.progress.over>div{background:#e38b38}.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px}table{width:100%;border-collapse:collapse;min-width:800px;font-size:13px}th,td{padding:10px 9px;border-bottom:1px solid #e6edf5;text-align:left;vertical-align:top}th{position:sticky;top:0;background:#f2f6fd;white-space:nowrap;font-size:12px}tr:last-child td{border-bottom:0}td.mono,code,pre{font-family:ui-monospace,SFMono-Regular,Consolas,Monaco,monospace}td.mono{font-size:12px;overflow-wrap:anywhere}td.wide{max-width:350px;overflow-wrap:anywhere}code{background:#f0f4fb;border-radius:3px;padding:1px 3px}.bitstream{width:100%;min-height:124px;max-height:330px;white-space:pre-wrap;overflow-wrap:anywhere;border:1px solid #b9c7db;background:#f8fbff;font:12px/1.65 ui-monospace,Consolas,monospace;padding:13px;border-radius:8px;resize:vertical}.details{font:12px/1.6 ui-monospace,Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere;max-height:180px;overflow:auto;background:#f8fbff;border:1px solid var(--line);padding:11px;border-radius:8px}.footnote{color:var(--muted);font-size:12px;margin:10px 0 0}.mono-small{font:12px ui-monospace,Consolas,monospace}.tag{border-radius:4px;background:#e5edfe;color:#284f91;padding:3px 6px;font-weight:700;white-space:nowrap;font-size:11px}.tag.eci{background:#f4e8ff;color:#70409f}.tests{font:12px/1.5 ui-monospace,Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere;margin-top:9px}
+@media(max-width:850px){.split{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:500px){.field-grid{grid-template-columns:1fr}main{padding:0 10px}.panel{padding:15px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">QRgen Lab · Layer 1 / 8</div>
+  <h1>Input and segmentation</h1>
+  <p>Inspect how text or raw bytes become QR data segments: mode indicators, character-count indicators and payload bits. No terminator, byte padding, Reed–Solomon correction or matrix rendering is performed here.</p>
+</header>
+<main>
+  <div class="split">
+    <section class="panel" aria-labelledby="input-title">
+      <h2 id="input-title">1. Input data</h2>
+      <div class="field-grid input-block">
+        <div><label for="sourceKind">Input format</label><select id="sourceKind"><option value="text">Unicode text</option><option value="hex">Raw bytes (hexadecimal)</option></select></div>
+        <div><label for="mode">Mode selection</label><select id="mode"><option value="auto">Automatic — shortest bitstream</option><option value="numeric">Numeric only</option><option value="alphanumeric">Alphanumeric only</option><option value="byte">Byte only (UTF-8)</option><option value="kanji">Kanji only (Shift-JIS)</option></select></div>
+      </div>
+      <div id="textBlock" class="input-block"><label for="textInput">Text to encode</label><textarea id="textInput" spellcheck="false">HELLO WORLD</textarea><p class="hint">Automatic segmentation can mix numeric, alphanumeric, byte and QR Kanji modes.</p></div>
+      <div id="hexBlock" class="input-block hidden"><label for="hexInput">Bytes in hexadecimal</label><textarea id="hexInput" spellcheck="false" placeholder="00 FF 41 7F"></textarea><p class="hint">Enter two hex digits per byte (spaces, commas, colons, underscores, hyphens or 0x prefixes accepted). Raw bytes are always encoded in QR byte mode; no character encoding is assumed.</p></div>
+      <div class="toolbar" aria-label="Example input presets"><button type="button" data-example="hello">HELLO WORLD</button><button type="button" data-example="numeric">Numeric example</button><button type="button" data-example="mixed">Mixed text</button><button type="button" data-example="kanji">Kanji example</button><button type="button" data-example="hex">Binary example</button></div>
+    </section>
+    <section class="panel" aria-labelledby="options-title">
+      <h2 id="options-title">2. QR parameters</h2>
+      <div class="field-grid">
+        <div><label for="version">Version</label><select id="version"></select><p class="hint">Default: version 2, as in the QRgen project.</p></div>
+        <div><label for="ecc">Error correction level</label><select id="ecc"><option value="L">L · Low</option><option value="M" selected>M · Medium</option><option value="Q">Q · Quartile</option><option value="H">H · High</option></select><p class="hint">Used only to check data-bit capacity.</p></div>
+        <div style="grid-column:1/-1"><label for="eci">UTF-8 ECI marker (assignment 26)</label><select id="eci"><option value="auto">Automatic for non-ASCII text when byte mode is used</option><option value="always">Always before the first byte segment</option><option value="never">Never (scanner interpretation may vary)</option></select><p class="hint">An ECI marker is 12 bits (0111 + 00011010). It identifies the byte encoding but is not a data segment with a character count.</p></div>
+      </div>
+      <label class="checkbox-line"><input type="checkbox" id="autoVersion"> Choose smallest fitting QR version (1–40)</label>
+      <p class="small">Layer 1 includes the version-dependent character-count width and can validate against the selected ECC capacity. <strong>Layer 2</strong> supplies the terminator and padding bytes.</p>
+      <div class="toolbar"><button id="recalculate" class="primary" type="button">Recalculate</button><button id="runTests" type="button">Run built-in checks</button></div>
+      <div id="tests" class="tests" role="status"></div>
+    </section>
+  </div>
+
+  <section class="panel" aria-labelledby="summary-title">
+    <h2 id="summary-title">3. Layer 1 result</h2>
+    <div id="status" class="status" role="status" aria-live="polite"></div>
+    <div class="stats">
+      <div class="stat"><span class="value" id="outVersion">—</span><span class="name">QR version</span></div>
+      <div class="stat"><span class="value" id="outSegments">—</span><span class="name">Data segments</span></div>
+      <div class="stat"><span class="value" id="outBits">—</span><span class="name">Layer 1 bits</span></div>
+      <div class="stat"><span class="value" id="outCapacity">—</span><span class="name">Data capacity, bits</span></div>
+    </div>
+    <div class="progress" id="capacityBar" role="progressbar" aria-label="Data-bit capacity used" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="capacityFill"></div></div>
+    <p class="hint" id="capacityNote">Capacity includes the space Layer 2 will fill, not the ECC codewords.</p>
+  </section>
+
+  <section class="panel" aria-labelledby="segments-title">
+    <h2 id="segments-title">4. Encoded segments</h2>
+    <div class="scroll"><table><thead><tr><th>#</th><th>Mode</th><th>Source content</th><th>Mode bits</th><th>Count</th><th>Count bits</th><th>Payload bits</th><th>Total</th></tr></thead><tbody id="segmentsTable"></tbody></table></div>
+    <p class="footnote">Character count is in digits/characters for numeric, alphanumeric and Kanji, but in encoded <strong>bytes</strong> for byte mode. ECI has no character-count field. All values are bit-exact and exclude Layer 2 processing.</p>
+  </section>
+
+  <section class="panel" aria-labelledby="bits-title">
+    <h2 id="bits-title">5. Layer 1 output bits</h2>
+    <label for="bitstream">Concatenated bitstream, most significant bit first</label>
+    <textarea id="bitstream" class="bitstream" readonly spellcheck="false" aria-label="Layer 1 bitstream"></textarea>
+    <div class="toolbar"><button type="button" id="copyBits">Copy bits</button><button type="button" id="copyJson">Copy JSON</button><button type="button" id="downloadJson">Download JSON</button></div>
+    <details style="margin-top:15px"><summary><strong>Bit fields and JSON interface</strong></summary><pre class="details" id="details">Select an input above.</pre><p class="hint">JSON includes each data/ECI segment, exact bit fields and the concatenated Layer 1 bitstream. The next layer adds terminator, byte-alignment and padding bytes.</p></details>
+  </section>
+  <p class="footnote">Offline and standalone: this single HTML file needs no libraries, HTTP requests, server, Node.js or additional assets. For formal conformance, consult ISO/IEC 18004. <a href="../docs/QR_CODE_CONSTRUCTION.md">QR construction guide</a> (relative link works after repository installation).</p>
+</main>
+<script>
+"use strict";
+
+// Layer 1 only — no terminator, padding, RS error correction, masking or module placement.
+// Reference: docs/QR_CODE_CONSTRUCTION.md, §§3–4 and Appendix B.
+(function () {
+  const $ = id => document.getElementById(id);
+  const ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:";
+  const MODES = {numeric:"0001", alphanumeric:"0010", byte:"0100", kanji:"1000"};
+  const CAPACITY = [
+    [19,16,13,9],[34,28,22,16],[55,44,34,26],[80,64,48,36],
+    [108,86,62,46],[136,108,76,60],[156,124,88,66],[194,154,110,86],
+    [232,182,132,100],[274,216,154,122],[324,254,180,140],[370,290,206,158],
+    [428,334,244,180],[461,365,261,197],[523,415,295,223],[589,453,325,253],
+    [647,507,367,283],[721,563,397,313],[795,627,445,341],[861,669,485,385],
+    [932,714,512,406],[1006,782,568,442],[1094,860,614,464],[1174,914,664,514],
+    [1276,1000,718,538],[1370,1062,754,596],[1468,1128,808,628],[1531,1193,871,661],
+    [1631,1267,911,701],[1735,1373,985,745],[1843,1455,1033,793],[1955,1541,1115,845],
+    [2071,1631,1171,901],[2191,1725,1231,961],[2306,1812,1286,986],[2434,1914,1354,1054],
+    [2566,1992,1426,1096],[2702,2102,1502,1142],[2812,2216,1582,1222],[2956,2334,1666,1276]
+  ];
+  const ECC_INDEX = {L:0,M:1,Q:2,H:3};
+  const ENCODER = new TextEncoder();
+  let kanjiMap = null;
+  let currentOutput = null;
+  let updateTimer = null;
+
+  function toBits(number, length) { return number.toString(2).padStart(length, "0"); }
+  function countWidth(mode, version) {
+    const band = version <= 9 ? 0 : version <= 26 ? 1 : 2;
+    return {numeric:[10,12,14],alphanumeric:[9,11,13],byte:[8,16,16],kanji:[8,10,12]}[mode][band];
+  }
+  function payloadSize(mode, count) {
+    if (mode === "numeric") return Math.floor(count / 3) * 10 + [0,4,7][count % 3];
+    if (mode === "alphanumeric") return Math.floor(count / 2) * 11 + (count % 2) * 6;
+    return count * (mode === "kanji" ? 13 : 8);
+  }
+  function makeKanjiMap() {
+    if (kanjiMap) return kanjiMap;
+    kanjiMap = new Map();
+    let decoder;
+    try { decoder = new TextDecoder("shift_jis", {fatal:true}); }
+    catch (_) { return kanjiMap; }
+    // QR Kanji is limited to these Shift-JIS double-byte ranges.
+    for (let h = 0x81; h <= 0xEB; h++) {
+      if (h > 0x9F && h < 0xE0) continue;
+      for (let l = 0x40; l <= 0xFC; l++) {
+        if (l === 0x7F) continue;
+        const code = (h << 8) | l;
+        if (!((code >= 0x8140 && code <= 0x9FFC) || (code >= 0xE040 && code <= 0xEBBF))) continue;
+        try {
+          const char = decoder.decode(Uint8Array.of(h,l));
+          if (Array.from(char).length === 1 && !kanjiMap.has(char)) kanjiMap.set(char,code);
+        } catch (_) { /* An unassigned Shift-JIS pair is not QR Kanji-eligible. */ }
+      }
+    }
+    return kanjiMap;
+  }
+  function prepareChars(text) {
+    const chars = Array.from(text);
+    const map = makeKanjiMap();
+    return chars.map(char => ({
+      char,
+      numeric:char >= "0" && char <= "9" && char.length === 1,
+      alphanumeric:ALPHABET.includes(char) && char.length === 1,
+      byteCount:ENCODER.encode(char).length,
+      kanji:map.get(char) ?? null
+    }));
+  }
+  function encodePayload(mode, chars, binaryBytes) {
+    if (mode === "byte") {
+      const bytes = binaryBytes ?? ENCODER.encode(chars.map(item => item.char).join(""));
+      return {bits:Array.from(bytes, b => toBits(b,8)).join(""),count:bytes.length,
+              hex:Array.from(bytes, b=>b.toString(16).toUpperCase().padStart(2,"0")).join(" ")};
+    }
+    let bits = "";
+    if (mode === "numeric") {
+      for (let i = 0; i < chars.length; i += 3) {
+        const group = chars.slice(i,i+3).map(v => v.char).join("");
+        bits += toBits(Number(group),[0,4,7,10][group.length]);
+      }
+    } else if (mode === "alphanumeric") {
+      for (let i = 0; i < chars.length; i += 2) {
+        const a = ALPHABET.indexOf(chars[i].char);
+        if (i + 1 < chars.length) bits += toBits(a * 45 + ALPHABET.indexOf(chars[i+1].char),11);
+        else bits += toBits(a,6);
+      }
+    } else if (mode === "kanji") {
+      for (const item of chars) {
+        const sjis = item.kanji;
+        const reduced = sjis - (sjis <= 0x9FFC ? 0x8140 : 0xC140);
+        bits += toBits(((reduced >>> 8) * 0xC0) + (reduced & 0xFF),13);
+      }
+    }
+    return {bits,count:chars.length};
+  }
+  function parseHex(text) {
+    const compact = text.replace(/0x/gi,"").replace(/[\s,;:_-]/g,"");
+    if (/[^0-9a-f]/i.test(compact)) throw Error("Hex input contains a non-hexadecimal character.");
+    if (compact.length % 2) throw Error("Hex input must contain complete bytes (two hexadecimal digits each).");
+    return Uint8Array.from(compact.match(/.{2}/g) || [], hex=>parseInt(hex,16));
+  }
+  function isEligible(item,mode) {
+    return mode === "byte" || (mode === "kanji" ? item.kanji !== null : item[mode]);
+  }
+  function optimize(chars,version,allowModes,useEci) {
+    const n = chars.length, states = useEci ? 2 : 1;
+    // All-numeric text is always optimally represented by numeric segments.
+    // Chunk directly at the character-count limit to avoid quadratic work on
+    // long inputs (e.g. several thousand decimal digits in version 40).
+    if (allowModes.includes("numeric") && chars.every(item=>item.numeric)) {
+      const maxCount = 2 ** countWidth("numeric",version) - 1;
+      const chunks = [];
+      for (let start=0; start<n; start+=maxCount)
+        chunks.push({start,end:Math.min(n,start+maxCount),mode:"numeric"});
+      return chunks;
+    }
+    const dp = Array.from({length:n+1},()=>Array(states).fill(null));
+    dp[0][0] = {cost:0,parts:0};
+    for (let start = 0; start < n; start++) {
+      for (let used = 0; used < states; used++) {
+        const base = dp[start][used];
+        if (!base) continue;
+        for (const mode of allowModes) {
+          let count = 0;
+          const width = countWidth(mode,version);
+          const maximum = (1 << width) - 1;
+          const nextUsed = useEci && mode === "byte" ? 1 : used;
+          const eciExtra = useEci && mode === "byte" && !used ? 12 : 0;
+          for (let end = start+1; end <= n; end++) {
+            const item = chars[end-1];
+            if (!isEligible(item,mode)) break;
+            count += mode === "byte" ? item.byteCount : 1;
+            if (count > maximum) break;
+            const cost = base.cost + 4 + width + payloadSize(mode,count) + eciExtra;
+            const parts = base.parts + 1;
+            const best = dp[end][nextUsed];
+            if (!best || cost < best.cost || (cost === best.cost && parts < best.parts)) {
+              dp[end][nextUsed] = {cost,parts,start,priorUsed:used,mode};
+            }
+          }
+        }
+      }
+    }
+    const [zero,one] = dp[n];
+    const selectedState = !one || (zero && (zero.cost < one.cost || (zero.cost === one.cost && zero.parts <= one.parts))) ? 0 : 1;
+    const last = dp[n][selectedState];
+    if (!last) throw Error("Input cannot be encoded with the selected mode and character-count width.");
+    const planned = [];
+    let end = n,used = selectedState;
+    while (end > 0) {
+      const item = dp[end][used];
+      planned.push({start:item.start,end,mode:item.mode});
+      used = item.priorUsed;
+      end = item.start;
+    }
+    planned.reverse();
+    return planned;
+  }
+  function appendDataSegment(segments,mode,content,version,binaryBytes) {
+    const {bits,count,hex} = encodePayload(mode,content,binaryBytes);
+    const width = countWidth(mode,version);
+    if (count >= 2 ** width) throw Error("Character count does not fit the selected QR version.");
+    const entry = {mode,indicator:MODES[mode],count,characterCountBits:toBits(count,width),payloadBits:bits,
+                   source:binaryBytes ? hex : content.map(v=>v.char).join("")};
+    entry.bits = entry.indicator + entry.characterCountBits + entry.payloadBits;
+    entry.totalBits = entry.bits.length;
+    segments.push(entry);
+  }
+  function buildLayer1({text="",binaryBytes=null,version=2,ecc="M",mode="auto",eci="auto",autoVersion=false}) {
+    if (!Number.isInteger(version) || version < 1 || version > 40) throw Error("Version must be from 1 to 40.");
+    if (!(ecc in ECC_INDEX)) throw Error("Invalid ECC level.");
+    if (!Object.hasOwn(MODES,mode) && mode !== "auto") throw Error("Invalid QR encoding mode.");
+    if (!["auto","always","never"].includes(eci)) throw Error("Invalid ECI setting.");
+    const chars = binaryBytes ? [] : prepareChars(text);
+    if (!binaryBytes && chars.length > 8000) throw Error("Text is too long for any standard QR Code (max. 7089 numeric characters).");
+    const forceBinary = binaryBytes !== null;
+    if (forceBinary && mode !== "auto" && mode !== "byte") throw Error("Raw binary input can only use QR byte mode.");
+    if (forceBinary ? binaryBytes.length === 0 : chars.length === 0)
+      throw Error("Enter text or at least one hexadecimal byte to encode.");
+    const containsNonAscii = chars.some(ch=>ch.char.codePointAt(0) > 127);
+    const useEci = !forceBinary && (eci === "always" || (eci === "auto" && containsNonAscii));
+    const modes = mode === "auto" ? ["numeric","alphanumeric","kanji","byte"] : [mode];
+    const planByCountBand = new Map();
+    const buildFor = v => {
+      let plan;
+      if (forceBinary) {
+        if (binaryBytes.length > (2 ** countWidth("byte",v) - 1)) throw Error("Binary byte count does not fit the version's count field.");
+        plan = binaryBytes.length ? [{mode:"byte",start:0,end:0}] : [];
+      } else {
+        const countBand = v <= 9 ? 0 : v <= 26 ? 1 : 2;
+        if (!planByCountBand.has(countBand))
+          planByCountBand.set(countBand,optimize(chars,v,modes,useEci));
+        plan = planByCountBand.get(countBand);
+      }
+      const segments = [];
+      let eciInserted = false;
+      for (const part of plan) {
+        if (part.mode === "byte" && useEci && !eciInserted) {
+          segments.push({mode:"ECI",indicator:"0111",count:null,characterCountBits:"",payloadBits:"00011010",
+                         source:"UTF-8 · assignment 26",bits:"011100011010",totalBits:12});
+          eciInserted = true;
+        }
+        appendDataSegment(segments,part.mode,chars.slice(part.start,part.end),v,forceBinary?binaryBytes:null);
+      }
+      const bitstream = segments.map(s=>s.bits).join("");
+      const dataCapacityBits = CAPACITY[v-1][ECC_INDEX[ecc]] * 8;
+      return {schema:"qrgen.layer1.v1",layer:1,version:v,ecc,modeSelection:mode,
+        source:{kind:forceBinary?"hex":"text",value:forceBinary ? Array.from(binaryBytes,b=>b.toString(16).toUpperCase().padStart(2,"0")).join(" ") : text},
+        eciPolicy:forceBinary?"not applicable":eci,segments,bitstream,bitLength:bitstream.length,
+        dataCapacityBits,fits:bitstream.length <= dataCapacityBits};
+    };
+    if (!autoVersion) return buildFor(version);
+    // Character-count widths change only at versions 10 and 27.
+    // Re-use the best segmentation for each band, then check all capacities.
+    let latest = null;
+    for (let v=1; v<=40; v++) {
+      // Raw bytes may exceed the 8-bit count field in versions 1–9.
+      // Continue to the 16-bit count field in version 10 instead of stopping.
+      if (forceBinary && binaryBytes.length > (2 ** countWidth("byte",v) - 1)) continue;
+      latest = buildFor(v);
+      if (latest.fits) return latest;
+    }
+    if (!latest) throw Error("Input cannot fit the QR character-count fields.");
+    return latest;
+  }
+  function updateUI(output) {
+    currentOutput = output;
+    $("status").className = output.fits ? "status good" : "status warning";
+    $("status").textContent = output.fits
+      ? "Layer 1 encoded successfully. The bitstream fits; unused capacity is reserved for Layer 2 terminator and padding."
+      : `Layer 1 is valid but exceeds version ${output.version}-${output.ecc} capacity by ${output.bitLength-output.dataCapacityBits} bits. Select another version/ECC level or shorten the input.`;
+    $("outVersion").textContent = String(output.version) + "-" + output.ecc;
+    $("outSegments").textContent = String(output.segments.filter(x=>x.mode !== "ECI").length);
+    $("outBits").textContent = output.bitLength.toLocaleString();
+    $("outCapacity").textContent = output.dataCapacityBits.toLocaleString();
+    const fraction = output.dataCapacityBits ? 100*output.bitLength/output.dataCapacityBits : 0;
+    $("capacityBar").classList.toggle("over",fraction>100);
+    $("capacityBar").setAttribute("aria-valuenow",String(Math.min(100,Math.round(fraction))));
+    $("capacityFill").style.width = Math.min(100,fraction) + "%";
+    $("capacityNote").textContent = `${fraction.toFixed(1)}% of the data-codeword capacity used by Layer 1; ${Math.max(0,output.dataCapacityBits-output.bitLength)} bits remain before Layer 2. ECC parity is not included.`;
+    const table = $("segmentsTable"); table.replaceChildren();
+    output.segments.forEach((seg,i)=>{
+      const tr = document.createElement("tr");
+      const values = [String(i+1),seg.mode,seg.source,seg.indicator,seg.count===null?"—":String(seg.count),seg.characterCountBits||"—",String(seg.payloadBits.length),String(seg.totalBits)];
+      values.forEach((v,j)=>{
+        const td=document.createElement("td");td.textContent=v;
+        if ([3,5,6,7].includes(j)) td.className="mono";
+        if (j===2) td.className="wide";
+        if (j===1) { const label=document.createElement("span");label.className="tag"+(seg.mode==="ECI"?" eci":"");label.textContent=v;td.replaceChildren(label); }
+        tr.appendChild(td);
+      });
+      table.appendChild(tr);
+    });
+    $("bitstream").value = output.bitstream;
+    $("details").textContent = output.segments.map((s,i)=>
+      `SEGMENT ${i+1}: ${s.mode}\nMode: ${s.indicator}\nCount: ${s.characterCountBits || "(not applicable)"}\nPayload: ${s.payloadBits || "(empty)"}\nSegment: ${s.bits}\n`).join("\n") + "\n\nJSON: " + JSON.stringify(output,null,2);
+    for (const id of ["copyBits","copyJson","downloadJson"]) $(id).disabled = !output.fits;
+  }
+  function clearUI(message) {
+    currentOutput=null;
+    $("status").className="status error"; $("status").textContent=message;
+    for (const id of ["outVersion","outSegments","outBits","outCapacity"]) $(id).textContent="—";
+    $("capacityBar").setAttribute("aria-valuenow","0");$("capacityFill").style.width="0%";
+    $("capacityNote").textContent="Correct the input above to inspect the bitstream.";
+    $("segmentsTable").replaceChildren();$("bitstream").value="";$("details").textContent="";
+    for (const id of ["copyBits","copyJson","downloadJson"]) $(id).disabled=true;
+  }
+  function recalc() {
+    try {
+      const binary = $("sourceKind").value==="hex" ? parseHex($("hexInput").value) : null;
+      const output = buildLayer1({text:$("textInput").value,binaryBytes:binary,
+        version:Number($("version").value),ecc:$("ecc").value,mode:$("mode").value,
+        eci:$("eci").value,autoVersion:$("autoVersion").checked});
+      updateUI(output);
+    } catch (error) { clearUI(error.message || "Failed to encode input."); }
+  }
+  function schedule() {clearTimeout(updateTimer);updateTimer=setTimeout(recalc,180);}
+  function sourceChanged() {
+    const hex=$("sourceKind").value==="hex";
+    $("textBlock").classList.toggle("hidden",hex);
+    $("hexBlock").classList.toggle("hidden",!hex);
+    $("eci").disabled=hex;
+    if (hex && !["auto","byte"].includes($("mode").value)) $("mode").value="auto";
+    schedule();
+  }
+  function downloadJson() {
+    if (!currentOutput || !currentOutput.fits) return;
+    const text = JSON.stringify(currentOutput,null,2);
+    const url = URL.createObjectURL(new Blob([text],{type:"application/json"}));
+    const link=document.createElement("a");link.href=url;link.download=`qrgen-layer1-v${currentOutput.version}-${currentOutput.ecc}.json`;
+    document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }
+  async function copy(value) {
+    if (!currentOutput || !currentOutput.fits) return;
+    try { await navigator.clipboard.writeText(value); }
+    catch (_) { const box=$("bitstream");box.focus();box.select();document.execCommand("copy"); }
+  }
+  function testChecks() {
+    const tests=[];
+    function check(name,callback) { try {if (!callback())throw Error("Assertion failed");tests.push("PASS  "+name);}catch(err){tests.push("FAIL  "+name+" · "+err.message);} }
+    const input=(text,mode="auto",v=2,eci="never")=>buildLayer1({text,mode,version:v,eci});
+    check("HELLO WORLD: 74 bits / one alphanumeric segment",()=>{let o=input("HELLO WORLD");return o.bitLength===74&&o.segments[0].mode==="alphanumeric"&&o.bitstream.startsWith("0010000001011");});
+    check("Numeric 01234567: 41 bits, leading zero retained",()=>{let o=input("01234567","numeric");return o.bitLength===41 && o.segments[0].payloadBits.startsWith("0000001100");});
+    check("Byte ASCII abc: 36 bits",()=>input("abc","byte").bitLength===36);
+    check("UTF-8 ECI 26 for é: 40 bits",()=>{let o=input("é","byte",2,"auto");return o.bitLength===40&&o.segments[0].bits==="011100011010"&&o.segments[1].count===2;});
+    check("Kanji 漢字: 38 bits (if Shift-JIS decoder available)",()=>{const o=input("漢字","kanji");return o.bitLength===38&&o.segments[0].payloadBits.length===26;});
+    check("v10 widens alphanumeric count from 9 to 11 bits",()=>input("HELLO WORLD","alphanumeric",10).bitLength===76);
+    check("Binary 00 FF 1A: 36 bits, byte count 3",()=>{let b=buildLayer1({binaryBytes:parseHex("00 FF 1A"),mode:"auto"});return b.bitLength===36&&b.segments[0].payloadBits==="000000001111111100011010";});
+    check("Optimized mixed input no worse than forced byte",()=>input("1234567890a1234567890").bitLength<input("1234567890a1234567890","byte").bitLength);
+    check("Auto version chooses 1-M for HELLO WORLD",()=>buildLayer1({text:"HELLO WORLD",ecc:"M",autoVersion:true}).version===1);
+    check("Forced numeric rejects invalid symbols",()=>{try{input("ABC","numeric");return false;}catch(_){return true;}});
+    check("Odd hex input rejected",()=>{try{parseHex("ABC");return false;}catch(_){return true;}});
+    check("All 160 data capacities available",()=>CAPACITY.length===40&&CAPACITY.every(row=>row.length===4)&&CAPACITY[1][1]===28&&CAPACITY[39][0]===2956);
+    check("Auto version handles >255 binary bytes",()=>{let o=buildLayer1({binaryBytes:new Uint8Array(300),autoVersion:true});return o.fits&&o.version>=10&&o.segments[0].count===300;});
+    check("Empty input is rejected",()=>{try{input("");return false;}catch(_){return true;}});
+    $("tests").textContent=tests.join("\n")+"\n\n"+tests.filter(v=>v.startsWith("PASS")).length+" / "+tests.length+" passed";
+  }
+  for (let v=1; v<=40; v++) { const option=document.createElement("option");option.value=String(v);option.textContent=`Version ${v} (${17+4*v} × ${17+4*v})`;if(v===2)option.selected=true;$("version").appendChild(option); }
+  const examples={
+    hello:["text","HELLO WORLD"],numeric:["text","01234567890123456789"],
+    mixed:["text","AB12-34567890-café-7890"],kanji:["text","漢字"],hex:["hex","00 01 7F 80 FF 41 42 43"]
+  };
+  document.querySelectorAll("[data-example]").forEach(button=>button.addEventListener("click",()=>{
+    const [kind,value]=examples[button.dataset.example];$("sourceKind").value=kind;
+    if (kind==="hex") $("hexInput").value=value;else $("textInput").value=value;
+    $("mode").value="auto";sourceChanged();
+  }));
+  for (const id of ["textInput","hexInput"]) $(id).addEventListener("input",schedule);
+  for (const id of ["mode","version","ecc","eci","autoVersion"]) $(id).addEventListener("change",schedule);
+  $("sourceKind").addEventListener("change",sourceChanged);
+  $("recalculate").addEventListener("click",recalc);
+  $("runTests").addEventListener("click",testChecks);
+  $("copyBits").addEventListener("click",()=>copy(currentOutput?.bitstream));
+  $("copyJson").addEventListener("click",()=>copy(JSON.stringify(currentOutput,null,2)));
+  $("downloadJson").addEventListener("click",downloadJson);
+  sourceChanged();
+  recalc();
+  // Keep a small public testing hook for console/manual regression; no external script required.
+  window.QRgenLayer1 = Object.freeze({buildLayer1,parseHex,prepareChars,countWidth});
+}());
+</script>
+</body>
+</html>
