@@ -4,6 +4,25 @@
 
 **Scope:** Conventional QR Code **Model 2** only (not Model 1, Micro QR, rMQR, proprietary color symbols, or full decoder implementation). The normative specification is ISO/IEC 18004:2024; follow that standard for formal conformance. This is newly written documentation, **not a copy** of Thonky's tutorial or images.
 
+```mermaid
+flowchart LR
+    A["<b>Analyze</b><br/>segment + ECC<br/>L1"] --> B["<b>Encode</b><br/>mode and bits<br/>L1–2"]
+    B --> C["<b>Pad</b><br/>0xEC / 0x11<br/>L2"]
+    C --> D["<b>RS parity</b><br/>per block<br/>L3"]
+    D --> E["<b>Interleave</b><br/>data then ECC<br/>L3"]
+    E --> F["<b>Matrix</b><br/>reserve + place<br/>L4–5"]
+    F --> G["<b>Mask</b><br/>score all eight<br/>L6"]
+    G --> H["<b>Metadata</b><br/>BCH + output<br/>L7–8"]
+
+    classDef violet fill:#ede9fe,stroke:#a8a29e,color:#0f172a,stroke-width:1px;
+    classDef blue fill:#dbeafe,stroke:#a8a29e,color:#0f172a,stroke-width:1px;
+
+    class A,C,E,G violet;
+    class B,D,F,H blue;
+
+    linkStyle default stroke:#475569,stroke-width:2px;
+```
+
 ## Contents
 
 1. [Encoding pipeline](#1-encoding-pipeline)
@@ -28,27 +47,6 @@
 20. [References](#references)
 
 ## 1. Encoding pipeline
-
-```mermaid
-flowchart LR
-    A["<b>Analyze</b><br/>segment + ECC<br/>L1"] --> B["<b>Encode</b><br/>mode and bits<br/>L1–2"]
-    B --> C["<b>Pad</b><br/>0xEC / 0x11<br/>L2"]
-    C --> D["<b>RS parity</b><br/>per block<br/>L3"]
-    D --> E["<b>Interleave</b><br/>data then ECC<br/>L3"]
-    E --> F["<b>Matrix</b><br/>reserve + place<br/>L4–5"]
-    F --> G["<b>Mask</b><br/>score all eight<br/>L6"]
-    G --> H["<b>Metadata</b><br/>BCH + output<br/>L7–8"]
-
-    classDef violet fill:#ede9fe,stroke:#a8a29e,color:#0f172a,stroke-width:1px;
-    classDef blue fill:#dbeafe,stroke:#a8a29e,color:#0f172a,stroke-width:1px;
-
-    class A,C,E,G violet;
-    class B,D,F,H blue;
-
-    linkStyle default stroke:#475569,stroke-width:2px;
-```
-
-**Detailed process**
 
 ```mermaid
 
