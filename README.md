@@ -34,7 +34,7 @@ The [QR Code Model construction guide](docs/QR_CODE_CONSTRUCTION.md) provides a 
 
 ## QR Code Lab
 
-<a href=><img src=res/VintageLab256.png></a>
+<a href=https://flyingzebra.github.io/QRgen/tools><img src=res/VintageLab256.png></a>
 
 ## Tools and references
 
