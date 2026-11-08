@@ -259,17 +259,96 @@ function padDataBits(segmentBits, dataCodewords) {
 
 ## 6. Reed–Solomon GF(256) parity
 
-A classic QR Code uses **real Reed–Solomon error correction** for payload codewords, working with eight-bit symbols over `GF(256)`. The field's irreducible polynomial is:
+A classic QR Code uses **Reed–Solomon (RS) error correction** independently for each block of data codewords. RS arithmetic operates on **8-bit symbols (bytes)**, not on individual black/white QR modules. The parity codewords for each block are appended to its data codewords before the separate interleaving step in [Section 7](#7-block-partitioning-and-interleaving).
 
-`x^8 + x^4 + x^3 + x^2 + 1` (binary `1_0001_1101`, hexadecimal **`0x11D`**).
+### Parameters and error-correction capability
 
-Field addition/subtraction is bytewise XOR. Multiplication is polynomial multiplication reduced modulo `0x11D`. With primitive element `alpha = 0x02`, a block requiring **e** parity codewords uses generator polynomial:
+| Symbol | Meaning for one RS block |
+|---|---|
+| $k$ | Unencoded message length in **data symbols** (data bytes), including any QR padding bytes assigned to the block |
+| $n$ | Encoded block length in **symbols** (data bytes plus parity bytes) |
+| $m$ | Symbol width in bits; **$m=8$** for QR Code |
+| $e=n-k$ | Number of Reed–Solomon **error-correction symbols** (parity bytes) |
+| $d_{\min}$ | Minimum **symbol-wise Hamming distance** between distinct valid codewords |
+| $t$ | Maximum number of **unknown erroneous symbols** correctable in the block |
 
-`g(x) = (x - alpha^0) * (x - alpha^1) * ... * (x - alpha^(e-1))`
+Reed–Solomon codes are *maximum-distance separable* (MDS), so the minimum distance is:
 
-In characteristic 2, subtraction is the same as addition. Treat the data bytes as coefficients from highest power to lowest, multiply by `x^e`, and take the remainder of polynomial division by `g(x)`. The **e-byte remainder** provides the RS ECC block. Correct up to `floor(e/2)` unknown wrong byte symbols in one block, or more generally satisfy `2*errors + knownErasures <= e` (within the decoder's correctable limits).
+$$
+d_{\min}=n-k+1=e+1.
+$$
 
-**Implementation requirements:** generator coefficients are elements of `GF(256)`, not ordinary integers; XOR all additions; reduce every multiplication; preserve byte order; compute each block **independently**. Appendix B defines how many ECC bytes and blocks to use.
+To correct up to $t$ unknown symbol errors, a code must satisfy $d_{\min}\ge 2t+1$. Consequently, an RS block corrects:
+
+$$
+t=\left\lfloor\frac{d_{\min}-1}{2}\right\rfloor
+ =\left\lfloor\frac{n-k}{2}\right\rfloor
+ =\left\lfloor\frac{e}{2}\right\rfloor.
+$$
+
+The **floor is necessary** when $e$ is odd: $d_{\min}=2t+1$ is not always an equality. With $u$ unknown symbol errors and $s$ *known-position erasures*, the usual combined decoding limit is $2u+s\le e$. Hamming distance counts **different byte symbols**, not differing individual bits.
+
+QR Code uses shortened RS blocks over $GF(2^8)$; the corresponding full-length primitive construction has $2^8-1=255$ symbols, while actual QR block lengths are shorter. Never apply $n$ and $k$ to the *entire interleaved QR symbol* when checking a block's correction capability.
+
+**Example:** Version 1 with ECC level M has one block with $k=16$ data bytes and $e=10$ parity bytes. Therefore $n=26$, $d_{\min}=11$ and $t=5$: up to five unknown erroneous **bytes** can be corrected in that block.
+
+### Linear and cyclic codes
+
+- A **linear code** is closed under field addition: adding two valid codeword vectors of the **same code** yields another valid codeword. In $GF(256)$, this symbol-wise addition is XOR.
+- A **cyclic code** is closed under a **cyclic rotation of whole symbols**: rotating a valid codeword produces another valid codeword of that same cyclic code. This is **not** an arbitrary circular *bit* shift. The full-length cyclic RS construction has this property; a **shortened** QR RS block need not retain it.
+
+The cyclic-code viewpoint motivates polynomial arithmetic, but QR encoding must still use the prescribed **shortened, systematic** RS construction.
+
+### Representing data as polynomials
+
+For a simple *binary* illustration, interpret the leftmost bit as the coefficient of the highest power of $x$:
+
+$$
+1011_2=1x^3+0x^2+1x+1=x^3+x+1.
+$$
+
+Under this convention, $1+x^2+x^3$ instead represents **1101**, not 1011. This example uses coefficients in $GF(2)$ only to introduce the notation. **Actual QR Reed–Solomon encoding uses whole bytes as coefficients in $GF(256)$**, so for data bytes $a_0,\ldots,a_{k-1}$ the message polynomial is:
+
+$$
+M(x)=a_0x^{k-1}+a_1x^{k-2}+\cdots+a_{k-1},
+\qquad a_i\in GF(256).
+$$
+
+The field $GF(256)$ is defined using the irreducible polynomial:
+
+$$
+p(x)=x^8+x^4+x^3+x^2+1
+\quad\text{(binary 100011101; hex 0x11D)}.
+$$
+
+Field addition/subtraction is **bytewise XOR**; field multiplication is polynomial multiplication reduced modulo $p(x)$. With primitive element $\alpha=0x02$, a block requiring $e$ parity codewords uses the degree-$e$ **generator polynomial**:
+
+$$
+g(x)=\prod_{i=0}^{e-1}(x-\alpha^i).
+$$
+
+In characteristic two, subtraction and addition are identical. The generator's coefficients are **field elements**, not ordinary integer coefficients.
+
+### Systematic encoding: multiply, divide, append parity
+
+QR uses **systematic** RS encoding: the original data bytes remain intact at the beginning of the encoded block, followed by $e$ parity bytes.
+
+1. **Multiply the message polynomial by $x^e$**, leaving room for $e$ parity symbols.
+2. **Divide by the generator polynomial $g(x)$** over $GF(256)$, retaining the remainder.
+3. **Append the remainder coefficients**, including leading zero bytes if needed, so exactly $e$ parity bytes are produced.
+
+In equations:
+
+$$
+R(x)=\operatorname{rem}\!\left(x^e M(x),g(x)\right),
+\qquad
+C(x)=x^e M(x)+R(x).
+$$
+
+Because addition and subtraction are both XOR in $GF(256)$, $C(x)$ is divisible by $g(x)$ and is a valid RS codeword. **Do not simply calculate $M(x)g(x)$ for QR encoding**: multiplying by the generator is associated with a non-systematic cyclic-code construction, whereas QR requires the **original data followed by the division remainder**.
+
+**Implementation requirements:** XOR all additions, reduce every field multiplication by **0x11D**, preserve data-byte order (highest-degree coefficient first), output exactly $e$ parity bytes, and compute parity **independently per RS block**. The number and sizes of blocks are prescribed in [Appendix B](#appendix-b-ecc-configurations-all-160); interleave only **after** generating their parity as described in [Section 7](#7-block-partitioning-and-interleaving).
+
 
 ## 7. Block partitioning and interleaving
 
