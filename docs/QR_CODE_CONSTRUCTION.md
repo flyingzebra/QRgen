@@ -48,8 +48,9 @@ flowchart LR
     linkStyle default stroke:#475569,stroke-width:2px;
 ```
 
-```mermaid
+### 1.1 Detailed process
 
+```mermaid
 
 flowchart TB
     subgraph L1["LAYER 1 — Input and segmentation"]
