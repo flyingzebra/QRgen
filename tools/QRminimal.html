@@ -474,18 +474,23 @@ var qrcode = function() {
       cellSize = cellSize || 2;
       margin = (typeof margin == 'undefined')? cellSize * 4 : margin;
 
-      var qrHtml = '';
+      // Both module colours use the same Unicode glyph, so the browser
+      // cannot assign a different advance width to light and dark modules.
+      var qrHtml = '<div style="font-family:monospace;white-space:nowrap;'
+        + 'letter-spacing:0;line-height:1;">';
 
       for (var r = 0; r < _this.getModuleCount(); r += 1) {
 
         for (var c = 0; c < _this.getModuleCount(); c += 1) {
 
-          qrHtml += _this.isDark(r, c)? '&#9608;' : '\u3000';
+          qrHtml += _this.isDark(r, c)
+            ? '<span style="color:black">&#9608;</span>'
+            : '<span style="color:white">&#9608;</span>';
         }
 
         qrHtml += '<br>';
       }
-      return qrHtml;
+      return qrHtml + '</div>';
     };
 
     _this.renderTo2dContext = function(context, cellSize) {
