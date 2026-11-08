@@ -1,10 +1,12 @@
 # QR generator
 
-## Layering
+## Presentation
+
+This is a stand-alone browser-based app generating QR code version 2, the most popular QR code we can find today.  This app is built layer by layer, each taking the inputs from the previous layer and providing its output to the next.  Each layer can be tested indeppendently in our QRcode Lab.
 
 ![QR code layering](docs/assets/qr_code_construction_layers.svg)
 
-## Complete documentation
+## Documentation
 
 [QR Code Model construction guide](docs/QR_CODE_CONSTRUCTION.md) — comprehensive implementation reference, all 40 alignment layouts, 160 ECC configurations, and all BCH format/version words.
 
