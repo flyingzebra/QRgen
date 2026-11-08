@@ -6,7 +6,7 @@ This is a stand-alone browser-based app generating QR code version 2, the most p
 
 ![Eight-stage QR encoder pipeline](docs/assets/qr-encoding-pipeline.svg)
 
-
+## Pipeline summary
 
 ![QR code layering](docs/assets/qr_code_construction_layers.svg)
 
