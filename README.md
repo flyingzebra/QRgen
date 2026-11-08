@@ -1,5 +1,9 @@
 # QR generator
 
+## Layering
+
+![QR code layering](docs/assets/qr_code_construction_layers.svg)
+
 ## Complete documentation
 
 [QR Code Model construction guide](docs/QR_CODE_CONSTRUCTION.md) — comprehensive implementation reference, all 40 alignment layouts, 160 ECC configurations, and all BCH format/version words.
