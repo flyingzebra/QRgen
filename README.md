@@ -2,7 +2,7 @@
 
 ## Presentation
 
-This is a stand-alone browser-based app generating QR code version 2, the most popular QR code we can find today.  This app is built layer by layer, each taking the inputs from the previous layer and providing its output to the next.  Each layer can be tested indeppendently in our QRcode Lab.
+This is a stand-alone browser-based app generating QR code version 2, the most popular QR code we can find today.  This app is built layer by layer, each taking the inputs from the previous layer and providing its output to the next.  Each layer as shown below can be tested indeppendently in our QRcode Lab. The aim for this project is all about comprehension of all the constituent formulas and algorithms which play a role in the making of a QR code.
 
 ![QR code layering](docs/assets/qr_code_construction_layers.svg)
 
