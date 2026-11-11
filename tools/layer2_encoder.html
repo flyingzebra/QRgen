@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QRgen Lab — Layer 2: Data Encoding</title>
+<style>
+:root{color-scheme:light;--ink:#152236;--muted:#52627b;--line:#d7e0ed;--soft:#f2f6fb;--blue:#265fc4;--good:#14663d;--bad:#ae2332;--panel:#fff;--purple:#7048a7;--tone-input:#3476c8;--tone-term:#f59e0b;--tone-align:#0d9488;--tone-pad:#8959c3}
+*{box-sizing:border-box}body{margin:0;background:#eef3fa;color:var(--ink);font:15px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+header{background:linear-gradient(115deg,#172b52,#254f92);color:#fff;padding:24px max(22px,calc((100% - 1260px)/2));box-shadow:0 3px 14px #182b4a25}
+header h1{font-size:clamp(24px,3vw,34px);line-height:1.15;margin:4px 0 10px}header p{margin:0;max-width:1020px;color:#e5efff}header .eyebrow{font-weight:750;color:#b9ddff;letter-spacing:.08em;text-transform:uppercase;font-size:12px}
+main{max-width:1304px;margin:22px auto 52px;padding:0 20px}a{color:var(--blue)}.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;margin:0 0 17px;box-shadow:0 2px 7px #20385409}.panel h2{font-size:18px;margin:0 0 13px}.split{display:grid;grid-template-columns:minmax(330px,1.4fr) minmax(290px,1fr);gap:18px}.field-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+label{font-weight:700;display:block;margin:0 0 6px}textarea,select,input[type="file"],button{font:inherit}textarea,select,input[type="file"]{width:100%;border:1px solid #aebed3;border-radius:7px;background:#fff;color:var(--ink);padding:10px 11px}textarea:focus,select:focus,button:focus-visible{outline:3px solid #8bb9ff;outline-offset:1px}textarea{resize:vertical;min-height:116px;font:12px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace}textarea.output{max-height:310px;background:#f8fbff}.hint{font-size:12px;color:var(--muted);margin:5px 0 10px}.small{font-size:13px;color:var(--muted)}.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}.toolbar button{cursor:pointer;border:1px solid #bdcbe0;border-radius:7px;padding:8px 12px;color:#214779;background:#f6f9ff;font-size:13px;font-weight:650}.toolbar button:hover:not(:disabled){background:#e6efff}.toolbar button.primary{background:#245fbd;color:white;border-color:#245fbd}.toolbar button.primary:hover{background:#164d9d}.toolbar button:disabled{opacity:.45;cursor:not-allowed}.hidden{display:none!important}.status{padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--soft);margin:0 0 12px}.status.good{background:#ecfaf1;border-color:#a5dac0;color:var(--good)}.status.error{background:#fff1f2;border-color:#f0bec5;color:var(--bad)}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}.stat{border:1px solid var(--line);border-radius:8px;background:#f8fbff;padding:11px;min-width:0}.stat .value{display:block;font-weight:750;font-size:21px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.stat .name{font-size:12px;color:var(--muted)}
+.bar{height:22px;border-radius:6px;display:flex;overflow:hidden;border:1px solid #cbd5e1;background:#f8fbff;margin:12px 0}.bar > div{height:100%;min-width:0}.legends{display:flex;flex-wrap:wrap;gap:10px 18px}.legend{display:inline-flex;gap:7px;align-items:center;font-size:12px}.swatch{display:inline-block;width:12px;height:12px;border-radius:3px}.phase-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:13px}.phase{border:1px solid var(--line);padding:11px;border-radius:8px;background:#fafcff}.phase strong{display:block;font-size:13px}.phase .number{font-weight:750;font-size:21px}.phase .detail{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.scroll{overflow:auto;max-height:460px;border:1px solid var(--line);border-radius:8px}table{width:100%;border-collapse:collapse;min-width:710px;font-size:13px}th,td{padding:9px 10px;border-bottom:1px solid #e6edf5;text-align:left;vertical-align:top}th{position:sticky;top:0;background:#f2f6fd;white-space:nowrap;font-size:12px}tr:last-child td{border-bottom:0}code,pre,.mono{font-family:ui-monospace,SFMono-Regular,Consolas,Monaco,monospace}code{background:#eef3fa;padding:1px 4px;border-radius:3px}.mono{font-size:12px}.tag{display:inline-block;border-radius:4px;background:#dbeafe;padding:2px 5px;font-weight:700;font-size:11px}.tag.pad{background:#ede4fa;color:#633e8c}.tag.mix{background:#fff0cf;color:#8b5100}.tag.term{background:#fff0cf;color:#8b5100}.tag.align{background:#d7f5f0;color:#0f766e}
+.tests{font:12px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere}.pager{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin:10px 0}.pager .toolbar{margin:0}.footnote{color:var(--muted);font-size:12px;margin:10px 0 0}.notice{border-left:4px solid var(--blue);background:#f2f6fd;padding:10px 13px;margin:12px 0;font-size:13px}.file-name{font-size:12px;color:var(--muted);margin-top:5px}
+@media(max-width:850px){.split{grid-template-columns:1fr}.stats,.phase-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:500px){.field-grid,.phase-grid{grid-template-columns:1fr}main{padding:0 10px}.panel{padding:15px}}
+</style>
+</head>
+<body>
+<header><div class="eyebrow">QRgen Lab · Layer 2 / 8</div><h1>Data encoding — terminator and padding</h1><p>Turn Layer 1 mode/count/payload bits into exactly the required number of QR data codewords. Examine every step and export data bytes for Layer 3 Reed–Solomon processing. Offline; no scripts, assets, or network dependencies.</p></header>
+<main>
+  <div class="split">
+    <section class="panel" aria-labelledby="in-title">
+      <h2 id="in-title">1. Supply Layer 1 output</h2>
+      <label for="sourceKind">Input type</label>
+      <select id="sourceKind"><option value="json" selected>Layer 1 JSON (recommended)</option><option value="bits">Raw encoded Layer 1 bits</option></select>
+      <div id="jsonGroup" style="margin-top:13px">
+        <label for="jsonFile">Import a JSON file exported by Layer 1</label>
+        <input id="jsonFile" type="file" accept=".json,application/json">
+        <p id="fileName" class="file-name">Or paste the JSON below. The imported version and ECC level are authoritative.</p>
+        <label for="jsonInput">Layer 1 JSON</label>
+        <textarea id="jsonInput" spellcheck="false" aria-label="Layer 1 JSON input"></textarea>
+        <div class="toolbar"><button type="button" id="exampleJson">Load HELLO WORLD Layer 1 JSON</button></div>
+      </div>
+      <div id="bitsGroup" class="hidden" style="margin-top:13px">
+        <label for="bitsInput">Encoded bits from Layer 1 (0 and 1 only)</label>
+        <textarea id="bitsInput" spellcheck="false" placeholder="0010000001011..."></textarea>
+        <p class="hint">Whitespace is ignored. These must already include mode and character-count indicators; do not paste unencoded text. Arbitrary bits are allowed for inspecting padding, but may not represent a valid Layer 1 payload.</p>
+        <div class="toolbar"><button type="button" id="exampleBits">Use HELLO WORLD bitstream</button><button type="button" id="exactBits">Example: exactly full capacity</button><button type="button" id="shortBits">Example: 2 spare bits</button></div>
+      </div>
+    </section>
+    <section class="panel" aria-labelledby="config-title">
+      <h2 id="config-title">2. QR configuration</h2>
+      <div class="field-grid">
+        <div><label for="version">QR version</label><select id="version"></select><p class="hint">Defaults to version 2 for manual bits; taken from Layer 1 when importing JSON.</p></div>
+        <div><label for="ecc">Error correction</label><select id="ecc"><option>L</option><option selected>M</option><option>Q</option><option>H</option></select><p class="hint">Data capacity depends on the version/ECC pair.</p></div>
+      </div>
+      <p id="parametersNote" class="notice">In JSON mode, the version and ECC settings come from Layer 1 and are locked.</p>
+      <div class="toolbar"><button class="primary" type="button" id="calculate">Encode Layer 2</button><button type="button" id="runTests">Run built-in regression tests</button></div>
+      <pre id="tests" class="tests" role="status"></pre>
+      <p class="footnote"><a href="layer1_encoder.html">Open Layer 1</a> · <a href="../docs/QR_CODE_CONSTRUCTION.md">Construction guide</a> · <a href="TOOLS_CATALOG.html">Tools catalog</a></p>
+    </section>
+  </div>
+  <section class="panel" aria-labelledby="overview-title">
+    <h2 id="overview-title">3. Result and capacity</h2>
+    <div id="status" class="status" role="status" aria-live="polite">Load or enter a valid Layer 1 input.</div>
+    <div class="stats">
+      <div class="stat"><span class="value" id="oVer">—</span><span class="name">Version / ECC level</span></div>
+      <div class="stat"><span class="value" id="oSource">—</span><span class="name">Layer 1 bits</span></div>
+      <div class="stat"><span class="value" id="oCap">—</span><span class="name">Data capacity (bits)</span></div>
+      <div class="stat"><span class="value" id="oWords">—</span><span class="name">Data codewords (bytes)</span></div>
+    </div>
+    <div id="bar" class="bar" aria-label="Bitstream composition"></div>
+    <div class="legends">
+      <span class="legend"><span class="swatch" style="background:var(--tone-input)"></span>Layer 1 segment bits</span>
+      <span class="legend"><span class="swatch" style="background:var(--tone-term)"></span>Terminator</span>
+      <span class="legend"><span class="swatch" style="background:var(--tone-align)"></span>Byte alignment</span>
+      <span class="legend"><span class="swatch" style="background:var(--tone-pad)"></span>Padding codewords</span>
+    </div>
+    <div class="phase-grid" id="phases"></div>
+    <p class="footnote">Layer 2 produces <em>data codewords only</em>. No Reed–Solomon parity, interleaving, matrix remainder bits, masking, or BCH metadata is generated here.</p>
+  </section>
+  <section class="panel" aria-labelledby="bytes-title">
+    <h2 id="bytes-title">4. Data codewords</h2>
+    <p class="hint">MSB first within each byte. Provenance labels are based on each byte's overlapping bit ranges; one byte can contain two or three phases.</p>
+    <div class="pager"><span id="pageInfo" class="small">—</span><div class="toolbar"><button type="button" id="prev">Previous page</button><button type="button" id="next">Next page</button></div></div>
+    <div class="scroll"><table><thead><tr><th>Index</th><th>Hex</th><th>Decimal</th><th>Binary (8 bits)</th><th>Bit ranges in codeword</th></tr></thead><tbody id="byteRows"></tbody></table></div>
+  </section>
+  <section class="panel" aria-labelledby="out-title">
+    <h2 id="out-title">5. Final Layer 2 output</h2>
+    <label for="hexOutput">Data codewords (hexadecimal, 16 per row)</label>
+    <textarea id="hexOutput" class="output" readonly spellcheck="false"></textarea>
+    <label for="bitOutput" style="margin-top:14px">Final padded bitstream (exact data capacity)</label>
+    <textarea id="bitOutput" class="output" readonly spellcheck="false"></textarea>
+    <div class="toolbar"><button type="button" id="copyHex">Copy hex</button><button type="button" id="copyBits">Copy bits</button><button type="button" id="copyJson">Copy JSON</button><button type="button" id="downloadJson">Download Layer 2 JSON</button><button type="button" id="downloadBin">Download data bytes (.bin)</button></div>
+    <details style="margin-top:15px"><summary><strong>Layer 3 interface / JSON structure</strong></summary><p class="hint">The export uses <code>qrgen.layer2.v1</code> with <code>version</code>, <code>ecc</code>, <code>dataCodewords</code>, <code>bitstream</code>, <code>stages</code>, and optionally the original <code>layer1</code> input. The next layer calculates Reed–Solomon parity using the version/ECC block configuration.</p><pre id="jsonPreview" class="tests" style="max-height:280px;overflow:auto"></pre></details>
+  </section>
+</main>
+<script>
+"use strict";
+// Classic QR Code Model 2 Layer 2 only. Appendix B capacities in docs/QR_CODE_CONSTRUCTION.md.
+// No external dependencies; functionality tested by window.QRgenLayer2.runChecks().
+(function () {
+  const $ = id => document.getElementById(id);
+  const ECC_ORDER = "LMQH";
+  // Data codewords per version, ordered L/M/Q/H. These are NOT raw codeword totals.
+  const CAPACITY = [
+    [19,16,13,9],[34,28,22,16],[55,44,34,26],[80,64,48,36],
+    [108,86,62,46],[136,108,76,60],[156,124,88,66],[194,154,110,86],
+    [232,182,132,100],[274,216,154,122],[324,254,180,140],[370,290,206,158],
+    [428,334,244,180],[461,365,261,197],[523,415,295,223],[589,453,325,253],
+    [647,507,367,283],[721,563,397,313],[795,627,445,341],[861,669,485,385],
+    [932,714,512,406],[1006,782,568,442],[1094,860,614,464],[1174,914,664,514],
+    [1276,1000,718,538],[1370,1062,754,596],[1468,1128,808,628],[1531,1193,871,661],
+    [1631,1267,911,701],[1735,1373,985,745],[1843,1455,1033,793],[1955,1541,1115,845],
+    [2071,1631,1171,901],[2191,1725,1231,961],[2306,1812,1286,986],[2434,1914,1354,1054],
+    [2566,1992,1426,1096],[2702,2102,1502,1142],[2812,2216,1582,1222],[2956,2334,1666,1276]
+  ];
+  const HEX = n => n.toString(16).toUpperCase().padStart(2,"0");
+  const bitsToBytes = bits => (bits.match(/.{8}/g) || []).map(byte => parseInt(byte,2));
+  const binary = bits => typeof bits === "string" && /^[01]+$/.test(bits);
+  const helloBits = (() => {
+    const alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:";
+    const source="HELLO WORLD", payload=[];
+    for (let i=0;i<source.length;i+=2) {
+      const a=alphabet.indexOf(source[i]);
+      if (i+1 < source.length) payload.push((a*45 + alphabet.indexOf(source[i+1])).toString(2).padStart(11,"0"));
+      else payload.push(a.toString(2).padStart(6,"0"));
+    }
+    return "0010" + "000001011" + payload.join("");
+  })();
+  function capacityCodewords(version,ecc) {
+    if (!Number.isInteger(version) || version<1 || version>40) throw Error("QR version must be an integer from 1 to 40.");
+    if (!ECC_ORDER.includes(ecc) || String(ecc).length!==1) throw Error("Error correction level must be L, M, Q or H.");
+    return CAPACITY[version-1][ECC_ORDER.indexOf(ecc)];
+  }
+  function parseBits(raw) {
+    if (typeof raw!=="string") throw Error("Provide a string of bits.");
+    const bits=raw.replace(/\s/g,"");
+    if (!binary(bits)) throw Error("Layer 1 bits must contain at least one binary digit and only 0 or 1 (whitespace is allowed).");
+    return bits;
+  }
+  function parseLayer1(raw) {
+    let obj;
+    try {obj=typeof raw==="string"?JSON.parse(raw):raw;} catch(e) {throw Error("Invalid Layer 1 JSON: " + e.message);}
+    if (!obj || typeof obj!=="object" || Array.isArray(obj) || obj.schema!=="qrgen.layer1.v1" || obj.layer!==1)
+      throw Error("Expected JSON exported from Layer 1 (schema qrgen.layer1.v1, layer 1).");
+    const capacity=capacityCodewords(obj.version,obj.ecc)*8;
+    if (!binary(obj.bitstream)) throw Error("Layer 1 JSON has an invalid binary bitstream.");
+    if (obj.bitLength!==obj.bitstream.length) throw Error("Layer 1 bitLength does not match bitstream length.");
+    if (obj.dataCapacityBits!==capacity) throw Error("Layer 1 data capacity disagrees with the QR version/ECC table.");
+    if (obj.fits!==(obj.bitLength<=capacity)) throw Error("Layer 1 fits flag does not agree with its actual capacity.");
+    if (!obj.fits) throw Error("Layer 1 exceeds data capacity; select a larger version or lower ECC level in Layer 1.");
+    if (!Array.isArray(obj.segments) || obj.segments.length===0 || obj.segments.some(s=>!s || !binary(s.bits)))
+      throw Error("Layer 1 JSON must contain valid encoded segments.");
+    if (obj.segments.map(s=>s.bits).join("")!==obj.bitstream) throw Error("Layer 1 segment bits do not match the concatenated bitstream.");
+    for (const segment of obj.segments) {
+      if (segment.totalBits!==segment.bits.length || !/^[01]{4}$/.test(segment.indicator) ||
+          !/^[01]*$/.test(segment.characterCountBits) || !/^[01]*$/.test(segment.payloadBits) ||
+          segment.indicator+segment.characterCountBits+segment.payloadBits!==segment.bits)
+        throw Error("A Layer 1 segment has inconsistent mode/count/payload fields.");
+    }
+    return obj;
+  }
+  function buildLayer2({bitstream,version=2,ecc="M",origin="raw-bits",layer1=null}) {
+    const capWords=capacityCodewords(version,ecc), capBits=capWords*8;
+    if (!binary(bitstream)) throw Error("A nonempty Layer 1 bitstream of 0/1 digits is required.");
+    if (bitstream.length>capBits) throw Error(`Layer 1 uses ${bitstream.length} bits, exceeding version ${version}-${ecc} capacity (${capBits}) by ${bitstream.length-capBits} bits.`);
+    if (layer1 && (layer1.version!==version || layer1.ecc!==ecc || layer1.bitstream!==bitstream))
+      throw Error("Layer 1 JSON metadata disagrees with input parameters.");
+    let bits=bitstream;
+    const termStart=bits.length, termBits="0".repeat(Math.min(4,capBits-bits.length));bits+=termBits;
+    const alignStart=bits.length, alignmentBits="0".repeat(Math.min((8-bits.length%8)%8,capBits-bits.length));bits+=alignmentBits;
+    if (bits.length%8) throw Error("Internal error: byte alignment failed.");
+    const paddingStart=bits.length, padding=[];
+    while (bits.length<capBits) {
+      const pad=padding.length%2===0?0xEC:0x11;
+      padding.push(pad);bits+=pad.toString(2).padStart(8,"0");
+    }
+    const words=bitsToBytes(bits);
+    if (bits.length!==capBits || words.length!==capWords) throw Error("Internal error: output capacity mismatch.");
+    const stages={
+      layer1:{start:0,bitLength:bitstream.length,bits:bitstream},
+      terminator:{start:termStart,bitLength:termBits.length,bits:termBits},
+      byteAlignment:{start:alignStart,bitLength:alignmentBits.length,bits:alignmentBits},
+      padding:{start:paddingStart,bitLength:padding.length*8,codewords:padding,hex:padding.map(HEX)}
+    };
+    return {schema:"qrgen.layer2.v1",layer:2,version,ecc,
+      origin,layer1:layer1||null,
+      segmentBitstream:bitstream,segmentBitLength:bitstream.length,
+      dataCapacityBits:capBits,dataCapacityCodewords:capWords,
+      stages,bitstream:bits,bitLength:bits.length,dataCodewords:words,
+      dataCodewordsHex:words.map(HEX),fits:true};
+  }
+  function phaseTags(out,index) {
+    const start=index*8,end=start+8;
+    const defs=[
+      ["Layer 1",0,out.stages.layer1.bitLength],
+      ["Terminator",out.stages.terminator.start,out.stages.terminator.start+out.stages.terminator.bitLength],
+      ["Alignment",out.stages.byteAlignment.start,out.stages.byteAlignment.start+out.stages.byteAlignment.bitLength],
+      ["Padding",out.stages.padding.start,out.bitLength]
+    ];
+    return defs.filter(([,s,e])=>Math.max(s,start)<Math.min(e,end)).map(([name,s,e])=>{
+      const lo=Math.max(start,s)-start,hi=Math.min(end,e)-start;
+      return {name,bits:`${lo}–${hi-1}`};
+    });
+  }
+  function hexRows(out) {
+    const lines=[];
+    for (let i=0;i<out.dataCodewords.length;i+=16)
+      lines.push(out.dataCodewords.slice(i,i+16).map(HEX).join(" "));
+    return lines.join("\n");
+  }
+  let current=null,page=0,updateTimer=null;
+  const PAGE_SIZE=128;
+  function clearResult(message) {
+    current=null;$("status").className="status error";$("status").textContent=message;
+    for (const k of ["oVer","oSource","oCap","oWords"]) $(k).textContent="—";
+    $("bar").replaceChildren();$("phases").replaceChildren();$("byteRows").replaceChildren();
+    $("hexOutput").value="";$("bitOutput").value="";$("jsonPreview").textContent="";
+    $("pageInfo").textContent="—";setControls();
+  }
+  function setControls() {
+    for (const k of ["copyHex","copyBits","copyJson","downloadJson","downloadBin"]) $(k).disabled=!current;
+    $("prev").disabled=!current || page<=0;
+    $("next").disabled=!current || (page+1)*PAGE_SIZE>=current.dataCodewords.length;
+  }
+  function updateTable() {
+    if (!current) return;
+    const tbody=$("byteRows");tbody.replaceChildren();
+    const start=page*PAGE_SIZE,end=Math.min(current.dataCodewords.length,start+PAGE_SIZE);
+    for (let i=start;i<end;i++) {
+      const tr=document.createElement("tr");
+      const values=[String(i),HEX(current.dataCodewords[i]),String(current.dataCodewords[i]),
+          current.dataCodewords[i].toString(2).padStart(8,"0")];
+      for (const v of values) {const td=document.createElement("td");td.textContent=v;td.className="mono";tr.appendChild(td);}
+      const td=document.createElement("td");
+      const tags=phaseTags(current,i);
+      tags.forEach((tag,j)=>{if(j)td.append(" ");const span=document.createElement("span");span.className="tag "+(tag.name==="Padding"?"pad":tag.name==="Terminator"?"term":tag.name==="Alignment"?"align":"");span.textContent=`${tag.name} [${tag.bits}]`;td.appendChild(span);});
+      tr.appendChild(td);tbody.appendChild(tr);
+    }
+    $("pageInfo").textContent=`Codewords ${start}–${end-1} of ${current.dataCodewords.length} · page ${page+1} / ${Math.ceil(current.dataCodewords.length/PAGE_SIZE)}`;
+    setControls();
+  }
+  function updateResult(out) {
+    current=out;page=0;
+    $("status").className="status good";
+    $("status").textContent=`Success: ${out.dataCapacityCodewords} data codewords, exactly ${out.dataCapacityBits} bits. Ready for Layer 3 (RS block partitioning and parity).`;
+    $("oVer").textContent=`${out.version}-${out.ecc}`;$("oSource").textContent=out.segmentBitLength.toLocaleString();
+    $("oCap").textContent=out.dataCapacityBits.toLocaleString();$("oWords").textContent=out.dataCapacityCodewords.toLocaleString();
+    const descriptions=[
+      ["Layer 1","layer1","var(--tone-input)","bits"],
+      ["Terminator","terminator","var(--tone-term)","bits"],
+      ["Byte alignment","byteAlignment","var(--tone-align)","bits"],
+      ["Padding codewords","padding","var(--tone-pad)","bytes"]
+    ];
+    const bar=$("bar"),ph=$("phases");bar.replaceChildren();ph.replaceChildren();
+    for (const [title,key,color,unit] of descriptions) {
+      const s=out.stages[key],length=s.bitLength;
+      if (length>0) {const segment=document.createElement("div");segment.style.width=(100*length/out.bitLength)+"%";segment.style.background=color;segment.title=`${title}: ${length} bits`;bar.appendChild(segment);}
+      const tile=document.createElement("div");tile.className="phase";
+      const label=document.createElement("strong");label.textContent=title;tile.appendChild(label);
+      const size=document.createElement("div");size.className="number";size.textContent=String(unit==="bytes"?s.codewords.length:length);tile.appendChild(size);
+      const detail=document.createElement("div");detail.className="detail";
+      detail.textContent=unit==="bytes"?`${length} bits · ${s.codewords.length?s.hex.slice(0,12).join(" ")+(s.codewords.length>12?" …":""):"No padding required"}`:
+        length ? `bits ${s.start}…${s.start+length-1} · ${s.bits.slice(0,32)}${s.bits.length>32?"…":""}` : "No bits added";
+      tile.appendChild(detail);ph.appendChild(tile);
+    }
+    $("hexOutput").value=hexRows(out);$("bitOutput").value=out.bitstream;
+    $("jsonPreview").textContent=JSON.stringify({...out,bitstream:`<${out.bitLength} bits>`,dataCodewords:`<${out.dataCodewords.length} bytes>`,dataCodewordsHex:`<${out.dataCodewordsHex.length} entries>`,layer1:out.layer1?"<original Layer 1 export>":null},null,2);
+    updateTable();
+  }
+  function recalc() {
+    try {
+      let input;
+      if ($("sourceKind").value==="json") {
+        const imported=parseLayer1($("jsonInput").value);
+        $("version").value=String(imported.version);$("ecc").value=imported.ecc;
+        input={bitstream:imported.bitstream,version:imported.version,ecc:imported.ecc,origin:"layer1-json",layer1:imported};
+      } else {
+        input={bitstream:parseBits($("bitsInput").value),version:Number($("version").value),ecc:$("ecc").value};
+      }
+      updateResult(buildLayer2(input));
+    } catch(e) {clearResult(e.message||"Unable to encode Layer 2 input.");}
+  }
+  function schedule() {clearTimeout(updateTimer);updateTimer=setTimeout(recalc,170);}
+  function changeSource() {
+    const json=$("sourceKind").value==="json";
+    $("jsonGroup").classList.toggle("hidden",!json);$("bitsGroup").classList.toggle("hidden",json);
+    $("version").disabled=json;$("ecc").disabled=json;
+    $("parametersNote").textContent=json?"In JSON mode, the version and ECC settings come from Layer 1 and are locked.":"In manual mode, choose a version and ECC level. Enter an already encoded Layer 1 bitstream.";
+    schedule();
+  }
+  function saveFile(blob,name) {
+    const url=URL.createObjectURL(blob),link=document.createElement("a");
+    link.href=url;link.download=name;document.body.appendChild(link);link.click();link.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1200);
+  }
+  function downloadJSON() {if(current)saveFile(new Blob([JSON.stringify(current,null,2)],{type:"application/json"}),`qrgen-layer2-v${current.version}-${current.ecc}.json`);}
+  function downloadBinary() {if(current)saveFile(new Blob([new Uint8Array(current.dataCodewords)],{type:"application/octet-stream"}),`qrgen-layer2-v${current.version}-${current.ecc}.bin`);}
+  async function copy(value) {
+    if (!current) return;
+    try {await navigator.clipboard.writeText(value);}
+    catch (_) {
+      // Clipboard permissions may be unavailable for local file:// pages.
+      const temp=document.createElement("textarea");
+      temp.value=value;temp.style.position="fixed";temp.style.opacity="0";
+      document.body.appendChild(temp);temp.select();document.execCommand("copy");temp.remove();
+    }
+  }
+  function fixture() {
+    const indicator="0010",count="000001011",payload=helloBits.slice(13);
+    return {schema:"qrgen.layer1.v1",layer:1,version:1,ecc:"M",modeSelection:"alphanumeric",
+      source:{kind:"text",value:"HELLO WORLD"},eciPolicy:"never",
+      segments:[{mode:"alphanumeric",indicator,count:11,characterCountBits:count,payloadBits:payload,source:"HELLO WORLD",bits:helloBits,totalBits:74}],
+      bitstream:helloBits,bitLength:74,dataCapacityBits:128,fits:true};
+  }
+  function runChecks() {
+    const tests=[];
+    const check=(name,test)=>{try{if(!test())throw Error("assertion failed");tests.push({ok:true,name});}catch(e){tests.push({ok:false,name,error:e.message});}};
+    const enc=(n,v=1,e="M")=>buildLayer2({bitstream:"1".repeat(n),version:v,ecc:e});
+    check("160 standard capacities present",()=>CAPACITY.length===40&&CAPACITY.every(row=>row.length===4)&&CAPACITY[1][1]===28&&CAPACITY[39][0]===2956);
+    check("V1-M HELLO WORLD: 16 bytes",()=>{const o=buildLayer2({bitstream:helloBits,version:1,ecc:"M"});return o.segmentBitLength===74&&o.stages.terminator.bitLength===4&&o.stages.byteAlignment.bitLength===2&&o.stages.padding.codewords.length===6&&o.dataCodewords.join(",")==="32,91,11,120,209,114,220,77,67,64,236,17,236,17,236,17";});
+    check("Layer 1 export consumed without altering source",()=>{const f=fixture(),o=buildLayer2({bitstream:parseLayer1(f).bitstream,version:f.version,ecc:f.ecc,layer1:f});return o.layer1===f&&o.schema==="qrgen.layer2.v1";});
+    check("Terminator stops after at most four bits",()=>enc(117).stages.terminator.bitLength===4);
+    check("Byte alignment 0–7 bits correct",()=>{for(let n=1;n<=15;n++){const o=enc(n);if(o.stages.byteAlignment.bitLength!==(8-((n+4)%8))%8)return false;}return true;});
+    check("Exact capacity: no terminator or padding",()=>{const o=enc(128);return o.stages.terminator.bitLength===0&&o.stages.byteAlignment.bitLength===0&&o.stages.padding.codewords.length===0;});
+    check("1 remaining bit gives one terminator bit",()=>enc(127).stages.terminator.bitLength===1);
+    check("2 remaining bits gives two terminator bits",()=>enc(126).stages.terminator.bitLength===2);
+    check("3 remaining bits gives three terminator bits",()=>enc(125).stages.terminator.bitLength===3);
+    check("4 remaining bits gives four terminator bits",()=>enc(124).stages.terminator.bitLength===4);
+    check("Padding always alternates EC / 11",()=>{const p=enc(4).stages.padding.codewords;return p.length>3&&p.every((n,i)=>n===(i%2?0x11:0xEC));});
+    check("V2-M capacity is 28 bytes",()=>enc(74,2,"M").dataCapacityCodewords===28);
+    check("V40-L capacity is 2,956 bytes",()=>enc(1,40,"L").dataCodewords.length===2956);
+    check("All 160 settings fill exactly target bytes",()=>{for(let v=1;v<=40;v++)for(const e of ECC_ORDER){const out=enc(1,v,e);if(out.bitLength!==capacityCodewords(v,e)*8||out.dataCodewords.length!==capacityCodewords(v,e))return false;}return true;});
+    check("Reject overflow",()=>{try{enc(129);return false;}catch(e){return e.message.includes("exceeding");}});
+    check("Reject malformed Layer 1 JSON",()=>{try{parseLayer1('{invalid');return false;}catch(_){return true;}});
+    check("Reject mismatched segment stream",()=>{const x=fixture();x.segments[0].bits="0001";try{parseLayer1(x);return false;}catch(_){return true;}});
+    check("Reject inconsistent version/ECC capacity",()=>{const x=fixture();x.dataCapacityBits=224;try{parseLayer1(x);return false;}catch(_){return true;}});
+    check("Reject non-binary manual inputs",()=>{try{parseBits("010X");return false;}catch(_){return true;}});
+    check("Leading zero bits preserved",()=>{const o=buildLayer2({bitstream:"00000001",version:1,ecc:"L"});return o.dataCodewords[0]===1;});
+    check("Mixed provenance for a shared byte",()=>{const o=buildLayer2({bitstream:helloBits,version:1,ecc:"M"});return phaseTags(o,9).some(t=>t.name==="Layer 1")&&phaseTags(o,9).some(t=>t.name==="Terminator");});
+    $("tests").textContent=tests.map(t=>`${t.ok?"PASS":"FAIL"} ${t.name}${t.error?" · "+t.error:""}`).join("\n")+`\n\n${tests.filter(t=>t.ok).length}/${tests.length} passed`;
+    return tests;
+  }
+  for(let i=1;i<=40;i++) {const opt=document.createElement("option");opt.value=String(i);opt.textContent=`Version ${i} (${17+4*i} × ${17+4*i})`;opt.selected=i===2;$("version").appendChild(opt);}
+  $("jsonInput").value=JSON.stringify(fixture(),null,2);
+  $("bitsInput").value=helloBits;
+  $("exampleJson").addEventListener("click",()=>{$("jsonInput").value=JSON.stringify(fixture(),null,2);$("fileName").textContent="Loaded built-in Layer 1 test vector.";schedule();});
+  $("exampleBits").addEventListener("click",()=>{$("bitsInput").value=helloBits;$("version").value="1";$("ecc").value="M";schedule();});
+  $("exactBits").addEventListener("click",()=>{$("bitsInput").value="1".repeat(capacityCodewords(Number($("version").value),$("ecc").value)*8);schedule();});
+  $("shortBits").addEventListener("click",()=>{$("bitsInput").value="1".repeat(capacityCodewords(Number($("version").value),$("ecc").value)*8-2);schedule();});
+  $("jsonFile").addEventListener("change",async ()=>{
+    const file=$("jsonFile").files?.[0];if(!file)return;
+    try {if(file.size>3000000)throw Error("Input file is too large (3 MB limit).");
+      $("jsonInput").value=await file.text();$("fileName").textContent=`Imported ${file.name} (${file.size} bytes)`;recalc();
+    }catch(e){clearResult("File import failed: "+e.message);}
+  });
+  $("sourceKind").addEventListener("change",changeSource);
+  for(const id of ["jsonInput","bitsInput"]) $(id).addEventListener("input",schedule);
+  for(const id of ["version","ecc"]) $(id).addEventListener("change",schedule);
+  $("calculate").addEventListener("click",recalc);
+  $("runTests").addEventListener("click",runChecks);
+  $("prev").addEventListener("click",()=>{if(page>0){page--;updateTable();}});
+  $("next").addEventListener("click",()=>{if(current&&(page+1)*PAGE_SIZE<current.dataCodewords.length){page++;updateTable();}});
+  $("copyHex").addEventListener("click",()=>copy($("hexOutput").value));
+  $("copyBits").addEventListener("click",()=>copy(current?.bitstream));
+  $("copyJson").addEventListener("click",()=>copy(JSON.stringify(current,null,2)));
+  $("downloadJson").addEventListener("click",downloadJSON);
+  $("downloadBin").addEventListener("click",downloadBinary);
+  changeSource();recalc();
+  window.QRgenLayer2=Object.freeze({buildLayer2,parseLayer1,parseBits,capacityCodewords,helloBits,fixture,phaseTags,runChecks});
+})();
+</script>
+</body>
+</html>

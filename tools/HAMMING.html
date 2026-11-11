@@ -1,0 +1,130 @@
+<script>
+var input  = [0,0,0,0,1,1,0,1,1,0,1]
+var input =  num2bit(Math.round(Math.random()*65536)).join("")  // TODO avoid small numbers
+input = (input + input + input + input + input + input).split("")
+
+
+var blk = 30;
+//var sx=8,sy=8
+//var sx = 4,sy  = 4;
+//var sx = 4,sy  = 4;
+
+//for(var i=0;i<18;i++)
+//   document.write("i="+i+" "+(Math.ceil(Math.sqrt(i)))+"<br>")
+
+var mtbl = ["<table border=0><tr><td valign=top>","</td><td>","</td><td  valign=top>","</td></tr><table>"];
+var img = "<img width=48px src='data:image/gif;base64,R0lGODlhGAAYAPAAAF3/AAAAACH5BAEAAAAALAAAAAAYABgAAAJPhG+hiu0Y4JsnSvqsBRvXtHXVQmpM4ogN+V1T2aJcSZ9cW+c4mNOf2fOBeEHWcFZc/IjFHbIpu1FgUelLWX1SsVaPKeaRhsKubLijOhspBQA7'>"
+var sbit = Math.ceil(Math.log(blk)/Math.log(2));
+var block = [blk-1,blk-1-sbit];
+var alter_arr = new Array();
+
+var output = new Array();
+var input_pos = 0;
+
+var s = '<style type="text/css">'
++'body { font-family:Arial }'
++'.myTable { background-color:#fff; border-collapse:collapse; margin:5px }'
++'.myTable td { padding:2px; border:1px solid #000; text-align:center; font-size:small }'
++'</style>'
+
+s += mtbl[0]
+s+= message_matrix( {"block":block,"output":output,"stage":0} );
+s+=mtbl[1] + img + mtbl[2]
+
+var str = XOR_matrix({"block":block,"output":output})
+alter_arr = str.split("|")[1].split("</td><td>")
+
+s+= str.replace(/\|/g,"");
+s+=mtbl[3] + mtbl[0]
+
+var rnd_flip = Math.floor(Math.random()*blk);
+s+= message_matrix( {"block":block,"output":output,"stage":1} );
+
+s+=mtbl[1] + img + mtbl[2]
+s+= XOR_matrix({"block":block,"output":output}).replace(/\|/g,"")
+s+=mtbl[3]
+
+///
+
+function message_matrix(o)
+{
+  //var sx = Math.round( Math.sqrt(block[0]+1) );
+  var sx = Math.ceil(Math.sqrt(block[0]+1))
+  var sy = Math.ceil((block[0]+1)/sx);
+  //alert(sx+" "+sy)
+
+  var sbit = o.block[0]-o.block[1];
+  var bb = " style=background-color:"
+  var bg = ["none","lightgreen","red","blue"];
+
+  var str ="Message matrix"
+     +"<small>"
+     +"<br><font color="+bg[1]+">"+String.fromCharCode(9632)+"</font> reserved parity bits"
+     +"<br><font color="+bg[3]+">"+String.fromCharCode(9632)+"</font> flipped parity bits"
+     +"<br><font color="+bg[2]+">"+String.fromCharCode(9632)+"</font> random error bits"
+     +"</small>"
+
+  str+="<table class=myTable>"
+  for(i=0;i<blk;i+=sx)
+  {
+    str+= i==0?("<tr><td"+bb+bg[0]+"><b>("+o.block.join(",")+")</b><br></td>"):"<tr>"
+    for(j=0;j<sx;j++)
+    {
+      var bitpos = num2bit(i+j,sbit).join("");
+      var b1bit = oneCount(bitpos)==1;                 // is there one bit only
+      var bflip = alter_arr[ bitpos.indexOf("1") ]==1;
+      var status = (b1bit?1:0) | (bflip && b1bit?2:0);
+
+      switch(o.stage)
+      {
+        case 0:
+          if(status==1) output[i+j-1] = 0             // parity bit
+          else output[i+j-1] = input[input_pos++-1]   // data bit
+        break;
+        case 1:
+          if(status==3) output[i+j-1] = 1 ^ output[i+j-1];
+          if(rnd_flip==i+j-1) { output[i+j-1] = 1 ^ output[i+j-1]; status=2 }
+        break;
+      }
+      if(i>0 || j>0) str+="<td"+bb+bg[status]+"><b>"+output[i+j-1]+"</b><br>"+bitpos+"</td>"
+    }
+    str+="</tr>"
+  }
+  str+="</table>"
+  str+="<br>"
+  return str;
+}
+
+function XOR_matrix(o)
+{
+  var x = 0;
+  var sbit = o.block[0]-o.block[1];
+  var str = "<br>XOR positions with a 1"
+  str+="<table class=myTable>"
+  for(i=0;i<o.block[0];i++)
+  {
+    if(o.output[i]=="1")
+    {
+        x = x ^ (i+1);
+        str+="<tr><td>"+num2bit(i+1,sbit).join("</td><td>")+"</td></tr>";
+    }
+  }
+  str+="<tr><td style=background-color:black colspan="+sbit+"></td></tr>";
+  str+="<tr><td>|"+num2bit(x,sbit).join("</td><td>")+"|</td></tr>";
+  str+="</table>"
+  return str;
+}
+
+function num2bit(num,len)
+{
+  var str = num.toString(2);
+  return typeof(len)=="number"?(Array(len-str.length+1).join("0")+str).split(""):str.split("");
+}
+
+function oneCount(bits)
+{
+  return bits.split("1").length-1;
+}
+
+document.write(s)
+</script>
