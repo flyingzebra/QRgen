@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Source ↔ English Prose — Offline Lexical Codec v2</title>
+<style>
+:root{color-scheme:dark;--bg:#101621;--panel:#182231;--panel2:#1e2b3c;--line:#334354;--fg:#eaf2fb;--muted:#a9bbce;--accent:#7dd3fc;--good:#86efac;--bad:#fca5a5}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}main{max-width:1380px;margin:auto;padding:26px 22px 38px}h1{margin:0 0 4px;font-size:clamp(22px,3.4vw,32px);letter-spacing:-.025em}header p{margin:0 0 18px;color:var(--muted)}.tag{display:inline-block;vertical-align:middle;padding:2px 7px;margin-left:7px;border:1px solid #3a657c;border-radius:6px;font-size:11px;color:#b3e4ff;letter-spacing:.03em}.toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:13px 14px;background:var(--panel);border:1px solid var(--line);border-radius:12px;margin:12px 0 16px}button,.filepick{font:inherit;cursor:pointer;white-space:nowrap;border:1px solid #50627a;border-radius:8px;background:#2c3d51;color:var(--fg);padding:8px 12px}button:hover,.filepick:hover{background:#374e67}button.primary{border-color:#3d90bc;background:#15618d;color:white}button.primary:hover{background:#1976aa}button:disabled{opacity:.5;cursor:default}label.small{font-size:12px;color:var(--muted)}select,input[type=text]{font:inherit;color:var(--fg);background:#101c2a;border:1px solid #465a70;border-radius:7px;padding:7px;min-width:105px}.filepick input{display:none}.spacer{flex:1}.columns{display:grid;grid-template-columns:1fr 1fr;gap:16px}.panel{min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}.panel-title{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--line)}h2{font-size:16px;margin:0}.hint{color:var(--muted);font-size:12px}textarea{display:block;width:100%;height:390px;resize:vertical;padding:16px;background:var(--panel);border:0;outline:none;color:var(--fg);font:13.5px/1.55 ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace;tab-size:2}textarea:focus{box-shadow:inset 0 0 0 2px #4089b3}.word-text{font-family:Georgia,"Times New Roman",serif;font-size:16px;line-height:1.8;letter-spacing:.015em}.footer{padding:10px 14px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:9px;align-items:center}.footer button{padding:6px 10px;font-size:13px}.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:16px}.stat{background:var(--panel2);border:1px solid var(--line);padding:11px 14px;border-radius:9px}.stat .value{font-weight:700;font-size:20px;font-variant-numeric:tabular-nums}.stat .label{font-size:12px;color:var(--muted)}.message{padding:10px 13px;border:1px solid var(--line);border-radius:8px;margin-top:13px;min-height:43px;color:var(--muted)}.message.ok{border-color:#265b49;color:var(--good)}.message.error{border-color:#874343;color:var(--bad)}.note{margin-top:15px;color:var(--muted);font-size:13px}.note a{color:var(--accent)}code{background:#243346;padding:2px 4px;border-radius:3px}@media(max-width:900px){.columns{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}textarea{height:280px}}@media(max-width:470px){main{padding:15px 9px}.stats{gap:6px}.stat .value{font-size:16px}}
+</style>
+</head>
+<body>
+<main>
+<header><h1>Source ↔ English Prose <span class="tag">100% OFFLINE · V2</span></h1>
+<p>Compress and encode any source file as English codewords or grammar-constrained sentences. Decode either mode losslessly; all processing stays in the browser.</p></header>
+<div class="toolbar">
+<label class="filepick">Open source file<input id="file" type="file"></label>
+<label class="small" for="format">English format</label>
+<select id="format"><option value="prose" selected>Grammar-constrained sentences</option><option value="words">Compact word list (v1)</option></select>
+<label class="small" for="compression">Compression</label>
+<select id="compression"><option value="auto">Auto (smallest)</option><option value="gzip">gzip</option><option value="lzss">LZSS (pure JS)</option><option value="raw">No compression</option></select>
+<button id="demo">Load demo</button><span class="spacer"></span>
+<button class="primary" id="encode">Encode →</button><button class="primary" id="decode">← Decode</button>
+</div>
+<div class="columns">
+<section class="panel"><div class="panel-title"><h2>Original source</h2><span class="hint">UTF-8 · exact bytes retained for uploaded files</span></div>
+<textarea id="source" spellcheck="false" placeholder="Paste HTML / JavaScript source, or open a file above…"></textarea>
+<div class="footer"><button id="saveSource">Download restored file</button><label class="small">Filename <input type="text" id="filename" value="restored.html" size="15"></label></div></section>
+<section class="panel"><div class="panel-title"><h2>Encoded English text</h2><span class="hint" id="modeHint">Reversible English sentence grammar · 42 bits/sentence</span></div>
+<textarea id="words" class="word-text" spellcheck="false" placeholder="Encoded English text appears here. Paste either v1 words or v2 sentences to decode…"></textarea>
+<div class="footer"><button id="copy">Copy English text</button><button id="saveWords">Download text</button><span class="hint">Case/whitespace are flexible; retain the sentence periods in prose mode.</span></div></section>
+</div>
+<div class="stats"><div class="stat"><div class="value" id="rawStat">—</div><div class="label">Original source bytes</div></div><div class="stat"><div class="value" id="packedStat">—</div><div class="label">Packed binary bytes</div></div><div class="stat"><div class="value" id="wordsStat">—</div><div class="label">Output English words</div></div><div class="stat"><div class="value" id="ratioStat">—</div><div class="label">Word-text / original ratio</div></div></div>
+<div id="message" class="message" role="status" aria-live="polite">Ready. Everything runs locally in this page, including decompression.</div>
+<p class="note"><strong>Modes:</strong> <b>English sentences</b> encodes each 42-bit block using a fixed grammatical template: article + adjective + singular noun + adverb + third-person transitive verb + article + adjective + singular noun. Articles vary in a predictable four-sentence cycle. These are valid sentence structures but not a coherent narrative. <b>Compact words (v1)</b> uses the canonical 2,048-word BIP-39 list with 11 bits per word and can decode text from the original version. Both modes use the same 17-byte frame, original byte length, and CRC-32. Neither mode encrypts or hides content cryptographically. Compression selects the smallest of gzip, JavaScript LZSS, and raw. Original uploaded file bytes are preserved.</p>
+</main>
+<script>
+"use strict";
+// Canonical BIP-39 English word list, indexed 0..2047, embedded for offline use.
+// Source: https://github.com/bitcoin/bips/blob/master/bip-0039/english.txt
+const BIP39_WORDS = `
+abandon ability able about above absent absorb abstract absurd abuse access accident account accuse achieve acid acoustic acquire across act action actor actress actual adapt add addict address adjust admit adult advance advice aerobic affair afford afraid again age agent agree ahead aim air airport aisle alarm album alcohol alert alien all alley allow almost alone alpha already also alter always amateur amazing among amount amused analyst anchor ancient anger angle angry animal ankle announce annual another answer antenna antique anxiety any apart apology appear apple approve april arch arctic area arena argue arm armed armor army around arrange arrest arrive arrow art artefact artist artwork ask aspect assault asset assist assume asthma athlete atom attack attend attitude attract auction audit august aunt author auto autumn average avocado avoid awake aware away awesome awful awkward axis
+baby bachelor bacon badge bag balance balcony ball bamboo banana banner bar barely bargain barrel base basic basket battle beach bean beauty because become beef before begin behave behind believe below belt bench benefit best betray better between beyond bicycle bid bike bind biology bird birth bitter black blade blame blanket blast bleak bless blind blood blossom blouse blue blur blush board boat body boil bomb bone bonus book boost border boring borrow boss bottom bounce box boy bracket brain brand brass brave bread breeze brick bridge brief bright bring brisk broccoli broken bronze broom brother brown brush bubble buddy budget buffalo build bulb bulk bullet bundle bunker burden burger burst bus business busy butter buyer buzz
+cabbage cabin cable cactus cage cake call calm camera camp can canal cancel candy cannon canoe canvas canyon capable capital captain car carbon card cargo carpet carry cart case cash casino castle casual cat catalog catch category cattle caught cause caution cave ceiling celery cement census century cereal certain chair chalk champion change chaos chapter charge chase chat cheap check cheese chef cherry chest chicken chief child chimney choice choose chronic chuckle chunk churn cigar cinnamon circle citizen city civil claim clap clarify claw clay clean clerk clever click client cliff climb clinic clip clock clog close cloth cloud clown club clump cluster clutch coach coast coconut code coffee coil coin collect color column combine come comfort comic common company concert conduct confirm congress connect consider control convince cook cool copper copy coral core corn correct cost cotton couch country couple course cousin cover coyote crack cradle craft cram crane crash crater crawl crazy cream credit creek crew cricket crime crisp critic crop cross crouch crowd crucial cruel cruise crumble crunch crush cry crystal cube culture cup cupboard curious current curtain curve cushion custom cute cycle
+dad damage damp dance danger daring dash daughter dawn day deal debate debris decade december decide decline decorate decrease deer defense define defy degree delay deliver demand demise denial dentist deny depart depend deposit depth deputy derive describe desert design desk despair destroy detail detect develop device devote diagram dial diamond diary dice diesel diet differ digital dignity dilemma dinner dinosaur direct dirt disagree discover disease dish dismiss disorder display distance divert divide divorce dizzy doctor document dog doll dolphin domain donate donkey donor door dose double dove draft dragon drama drastic draw dream dress drift drill drink drip drive drop drum dry duck dumb dune during dust dutch duty dwarf dynamic
+eager eagle early earn earth easily east easy echo ecology economy edge edit educate effort egg eight either elbow elder electric elegant element elephant elevator elite else embark embody embrace emerge emotion employ empower empty enable enact end endless endorse enemy energy enforce engage engine enhance enjoy enlist enough enrich enroll ensure enter entire entry envelope episode equal equip era erase erode erosion error erupt escape essay essence estate eternal ethics evidence evil evoke evolve exact example excess exchange excite exclude excuse execute exercise exhaust exhibit exile exist exit exotic expand expect expire explain expose express extend extra eye eyebrow
+fabric face faculty fade faint faith fall false fame family famous fan fancy fantasy farm fashion fat fatal father fatigue fault favorite feature february federal fee feed feel female fence festival fetch fever few fiber fiction field figure file film filter final find fine finger finish fire firm first fiscal fish fit fitness fix flag flame flash flat flavor flee flight flip float flock floor flower fluid flush fly foam focus fog foil fold follow food foot force forest forget fork fortune forum forward fossil foster found fox fragile frame frequent fresh friend fringe frog front frost frown frozen fruit fuel fun funny furnace fury future
+gadget gain galaxy gallery game gap garage garbage garden garlic garment gas gasp gate gather gauge gaze general genius genre gentle genuine gesture ghost giant gift giggle ginger giraffe girl give glad glance glare glass glide glimpse globe gloom glory glove glow glue goat goddess gold good goose gorilla gospel gossip govern gown grab grace grain grant grape grass gravity great green grid grief grit grocery group grow grunt guard guess guide guilt guitar gun gym
+habit hair half hammer hamster hand happy harbor hard harsh harvest hat have hawk hazard head health heart heavy hedgehog height hello helmet help hen hero hidden high hill hint hip hire history hobby hockey hold hole holiday hollow home honey hood hope horn horror horse hospital host hotel hour hover hub huge human humble humor hundred hungry hunt hurdle hurry hurt husband hybrid
+ice icon idea identify idle ignore ill illegal illness image imitate immense immune impact impose improve impulse inch include income increase index indicate indoor industry infant inflict inform inhale inherit initial inject injury inmate inner innocent input inquiry insane insect inside inspire install intact interest into invest invite involve iron island isolate issue item ivory
+jacket jaguar jar jazz jealous jeans jelly jewel job join joke journey joy judge juice jump jungle junior junk just
+kangaroo keen keep ketchup key kick kid kidney kind kingdom kiss kit kitchen kite kitten kiwi knee knife knock know
+lab label labor ladder lady lake lamp language laptop large later latin laugh laundry lava law lawn lawsuit layer lazy leader leaf learn leave lecture left leg legal legend leisure lemon lend length lens leopard lesson letter level liar liberty library license life lift light like limb limit link lion liquid list little live lizard load loan lobster local lock logic lonely long loop lottery loud lounge love loyal lucky luggage lumber lunar lunch luxury lyrics
+machine mad magic magnet maid mail main major make mammal man manage mandate mango mansion manual maple marble march margin marine market marriage mask mass master match material math matrix matter maximum maze meadow mean measure meat mechanic medal media melody melt member memory mention menu mercy merge merit merry mesh message metal method middle midnight milk million mimic mind minimum minor minute miracle mirror misery miss mistake mix mixed mixture mobile model modify mom moment monitor monkey monster month moon moral more morning mosquito mother motion motor mountain mouse move movie much muffin mule multiply muscle museum mushroom music must mutual myself mystery myth
+naive name napkin narrow nasty nation nature near neck need negative neglect neither nephew nerve nest net network neutral never news next nice night noble noise nominee noodle normal north nose notable note nothing notice novel now nuclear number nurse nut
+oak obey object oblige obscure observe obtain obvious occur ocean october odor off offer office often oil okay old olive olympic omit once one onion online only open opera opinion oppose option orange orbit orchard order ordinary organ orient original orphan ostrich other outdoor outer output outside oval oven over own owner oxygen oyster ozone
+pact paddle page pair palace palm panda panel panic panther paper parade parent park parrot party pass patch path patient patrol pattern pause pave payment peace peanut pear peasant pelican pen penalty pencil people pepper perfect permit person pet phone photo phrase physical piano picnic picture piece pig pigeon pill pilot pink pioneer pipe pistol pitch pizza place planet plastic plate play please pledge pluck plug plunge poem poet point polar pole police pond pony pool popular portion position possible post potato pottery poverty powder power practice praise predict prefer prepare present pretty prevent price pride primary print priority prison private prize problem process produce profit program project promote proof property prosper protect proud provide public pudding pull pulp pulse pumpkin punch pupil puppy purchase purity purpose purse push put puzzle pyramid
+quality quantum quarter question quick quit quiz quote
+rabbit raccoon race rack radar radio rail rain raise rally ramp ranch random range rapid rare rate rather raven raw razor ready real reason rebel rebuild recall receive recipe record recycle reduce reflect reform refuse region regret regular reject relax release relief rely remain remember remind remove render renew rent reopen repair repeat replace report require rescue resemble resist resource response result retire retreat return reunion reveal review reward rhythm rib ribbon rice rich ride ridge rifle right rigid ring riot ripple risk ritual rival river road roast robot robust rocket romance roof rookie room rose rotate rough round route royal rubber rude rug rule run runway rural
+sad saddle sadness safe sail salad salmon salon salt salute same sample sand satisfy satoshi sauce sausage save say scale scan scare scatter scene scheme school science scissors scorpion scout scrap screen script scrub sea search season seat second secret section security seed seek segment select sell seminar senior sense sentence series service session settle setup seven shadow shaft shallow share shed shell sheriff shield shift shine ship shiver shock shoe shoot shop short shoulder shove shrimp shrug shuffle shy sibling sick side siege sight sign silent silk silly silver similar simple since sing siren sister situate six size skate sketch ski skill skin skirt skull slab slam sleep slender slice slide slight slim slogan slot slow slush small smart smile smoke smooth snack snake snap sniff snow soap soccer social sock soda soft solar soldier solid solution solve someone song soon sorry sort soul sound soup source south space spare spatial spawn speak special speed spell spend sphere spice spider spike spin spirit split spoil sponsor spoon sport spot spray spread spring spy square squeeze squirrel stable stadium staff stage stairs stamp stand start state stay steak steel stem step stereo stick still sting stock stomach stone stool story stove strategy street strike strong struggle student stuff stumble style subject submit subway success such sudden suffer sugar suggest suit summer sun sunny sunset super supply supreme sure surface surge surprise surround survey suspect sustain swallow swamp swap swarm swear sweet swift swim swing switch sword symbol symptom syrup system
+table tackle tag tail talent talk tank tape target task taste tattoo taxi teach team tell ten tenant tennis tent term test text thank that theme then theory there they thing this thought three thrive throw thumb thunder ticket tide tiger tilt timber time tiny tip tired tissue title toast tobacco today toddler toe together toilet token tomato tomorrow tone tongue tonight tool tooth top topic topple torch tornado tortoise toss total tourist toward tower town toy track trade traffic tragic train transfer trap trash travel tray treat tree trend trial tribe trick trigger trim trip trophy trouble truck true truly trumpet trust truth try tube tuition tumble tuna tunnel turkey turn turtle twelve twenty twice twin twist two type typical
+ugly umbrella unable unaware uncle uncover under undo unfair unfold unhappy uniform unique unit universe unknown unlock until unusual unveil update upgrade uphold upon upper upset urban urge usage use used useful useless usual utility
+vacant vacuum vague valid valley valve van vanish vapor various vast vault vehicle velvet vendor venture venue verb verify version very vessel veteran viable vibrant vicious victory video view village vintage violin virtual virus visa visit visual vital vivid vocal voice void volcano volume vote voyage
+wage wagon wait walk wall walnut want warfare warm warrior wash wasp waste water wave way wealth weapon wear weasel weather web wedding weekend weird welcome west wet whale what wheat wheel when where whip whisper wide width wife wild will win window wine wing wink winner winter wire wisdom wise wish witness wolf woman wonder wood wool word work world worry worth wrap wreck wrestle wrist write wrong
+yard year yellow you young youth zebra zero zone zoo
+`.trim().split(/\s+/);
+if (BIP39_WORDS.length !== 2048 || new Set(BIP39_WORDS).size !== 2048) {
+  throw Error("Embedded word list is damaged; expected 2048 unique words.");
+}
+// Protect the index mapping from accidental edits to the embedded dictionary.
+let dictionaryHash = 2166136261;
+for (const char of BIP39_WORDS.join(' '))
+  dictionaryHash = Math.imul(dictionaryHash ^ char.charCodeAt(0), 16777619) >>> 0;
+if (dictionaryHash !== 0xa2d4347c) throw Error('Embedded BIP-39 dictionary does not match the canonical word order.');
+const WORD_INDEX = new Map(BIP39_WORDS.map((word, index) => [word, index]));
+const ENCODER = new TextEncoder();
+const MAGIC = [76, 88, 69, 49]; // "LXE1", lexical exchange format version 1
+const HEADER_SIZE = 17;
+const MAX_BYTES = 32 * 1024 * 1024; // guard against malformed/decompression-bomb frames
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let i = 0; i < 256; ++i) {
+    let x = i;
+    for (let j = 0; j < 8; ++j) x = x & 1 ? (0xedb88320 ^ (x >>> 1)) : (x >>> 1);
+    t[i] = x >>> 0;
+  }
+  return t;
+})();
+function crc32(bytes) {
+  let c = 0xffffffff;
+  for (let i = 0; i < bytes.length; ++i) c = CRC_TABLE[(c ^ bytes[i]) & 255] ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0;
+}
+function putU32(a, offset, value) {
+  a[offset] = (value >>> 24) & 255;
+  a[offset + 1] = (value >>> 16) & 255;
+  a[offset + 2] = (value >>> 8) & 255;
+  a[offset + 3] = value & 255;
+}
+function getU32(a, offset) {
+  return ((a[offset] * 0x1000000) + (a[offset+1] << 16) + (a[offset+2] << 8) + a[offset+3]) >>> 0;
+}
+function hash3(bytes, i) {
+  return Math.imul(bytes[i] * 65599 + bytes[i+1], 257) + bytes[i+2] & 65535;
+}
+// An independent, deterministic, dependency-free LZSS codec.
+// 8 tokens share one flags byte; match tokens are 12-bit distance + 4-bit length.
+function lzssCompress(src) {
+  const n = src.length, out = [], head = new Int32Array(65536), prev = new Int32Array(n);
+  head.fill(-1);
+  let i = 0, flagPos = -1, bit = 0;
+  while (i < n) {
+    if (bit === 0) { flagPos = out.length; out.push(0); }
+    let bestLen = 0, bestDist = 0;
+    if (i + 2 < n) {
+      const key = hash3(src, i);
+      let j = head[key], trials = 0;
+      const limit = Math.min(18, n - i);
+      while (j >= 0 && i - j <= 4096 && trials++ < 48) {
+        if (src[j] === src[i] && src[j+1] === src[i+1] && src[j+2] === src[i+2]) {
+          let length = 3;
+          while (length < limit && src[j+length] === src[i+length]) length++;
+          if (length > bestLen) {
+            bestLen = length; bestDist = i - j;
+            if (length === limit) break;
+          }
+        }
+        j = prev[j];
+      }
+    }
+    const span = bestLen >= 3 ? bestLen : 1;
+    if (span > 1) {
+      out[flagPos] |= (1 << bit);
+      const distance = bestDist - 1;
+      out.push(distance & 255, ((distance >>> 8) & 15) | ((span - 3) << 4));
+    } else out.push(src[i]);
+    for (let k = 0; k < span; k++) {
+      const p = i + k;
+      if (p + 2 < n) {
+        const key = hash3(src, p);
+        prev[p] = head[key];
+        head[key] = p;
+      }
+    }
+    i += span;
+    bit = (bit + 1) & 7;
+  }
+  return Uint8Array.from(out);
+}
+function lzssDecompress(src, expected) {
+  const out = new Uint8Array(expected);
+  let p = 0, q = 0;
+  while (p < src.length) {
+    const flags = src[p++];
+    for (let bit = 0; bit < 8 && p < src.length; bit++) {
+      if (flags & (1 << bit)) {
+        if (p + 1 >= src.length) throw Error("Truncated LZSS match token.");
+        const low = src[p++], high = src[p++];
+        const distance = (low | ((high & 15) << 8)) + 1;
+        const count = (high >>> 4) + 3;
+        if (distance > q || q + count > expected) throw Error("Invalid LZSS distance or output length.");
+        for (let j = 0; j < count; ++j) { out[q] = out[q-distance]; q++; }
+      } else {
+        if (q >= expected) throw Error("LZSS output exceeds declared length.");
+        out[q++] = src[p++];
+      }
+    }
+  }
+  if (q !== expected) throw Error(`LZSS output incomplete (${q} versus ${expected} bytes).`);
+  return out;
+}
+async function gzipTransform(data, decompress) {
+  const StreamCtor = decompress ? globalThis.DecompressionStream : globalThis.CompressionStream;
+  if (typeof StreamCtor !== 'function') throw Error('This browser does not offer built-in gzip; use LZSS.');
+  const transformed = new Blob([data]).stream().pipeThrough(new StreamCtor('gzip'));
+  // Check output incrementally: never materialize an unchecked gzip bomb.
+  const reader = transformed.getReader();
+  const chunks = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      if (total + value.length > MAX_BYTES)
+        throw Error('gzip output would exceed the 32 MiB safety limit.');
+      total += value.length;
+      chunks.push(value);
+    }
+  } finally { reader.releaseLock(); }
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) { out.set(chunk, offset); offset += chunk.length; }
+  return out;
+}
+function asEnglishWords(data) {
+  const tokens = [];
+  let bits = 0, acc = 0;
+  for (let i = 0; i < data.length; i++) {
+    acc = (acc << 8) | data[i]; bits += 8;
+    while (bits >= 11) {
+      bits -= 11;
+      tokens.push(BIP39_WORDS[(acc >>> bits) & 2047]);
+      acc &= (1 << bits) - 1;
+    }
+  }
+  if (bits) tokens.push(BIP39_WORDS[(acc << (11-bits)) & 2047]);
+  const lines = [];
+  for (let i = 0; i < tokens.length; i += 12) {
+    const words = tokens.slice(i, i + 12);
+    words[0] = words[0].charAt(0).toUpperCase() + words[0].slice(1);
+    lines.push(words.join(' ') + '.');
+  }
+  const paragraphs = [];
+  for (let i = 0; i < lines.length; i += 4) paragraphs.push(lines.slice(i, i + 4).join('\n'));
+  return { text: paragraphs.join('\n\n'), count: tokens.length };
+}
+function fromEnglishWords(text) {
+  const tokens = text.toLowerCase().match(/[a-z]+/g) || [];
+  if (!tokens.length) throw Error('No English codewords found.');
+  const out = [];
+  let acc = 0, bits = 0;
+  for (let i = 0; i < tokens.length; i++) {
+    const index = WORD_INDEX.get(tokens[i]);
+    if (index === undefined) throw Error(`Unknown codeword #${i+1}: "${tokens[i]}".`);
+    acc = (acc << 11) | index; bits += 11;
+    while (bits >= 8) {
+      bits -= 8; out.push((acc >>> bits) & 255);
+      acc &= (1 << bits) - 1;
+    }
+  }
+  const frame = Uint8Array.from(out);
+  if (frame.length < HEADER_SIZE) throw Error('Incomplete lexical frame/header.');
+  for (let i = 0; i < MAGIC.length; ++i)
+    if (frame[i] !== MAGIC[i]) throw Error('Invalid frame signature. This is not data from this codec.');
+  const originalLen = getU32(frame, 5), packedLen = getU32(frame, 9);
+  if (originalLen > MAX_BYTES || packedLen > MAX_BYTES) throw Error('Declared file size is above the 32 MiB safety limit.');
+  const required = HEADER_SIZE + packedLen;
+  if (tokens.length !== Math.ceil(required * 8 / 11)) throw Error('Wrong number of words: data is missing or extra words were added.');
+  if (frame.length < required) throw Error('Truncated encoded payload.');
+  for (let i = required; i < frame.length; i++)
+    if (frame[i] !== 0) throw Error('Nonzero padding bytes in encoded payload.');
+  if (acc !== 0) throw Error('Nonzero trailing padding bits.');
+  return { codec: frame[4], originalLen, packed: frame.slice(HEADER_SIZE, required), crc: getU32(frame, 13), count: tokens.length };
+}
+
+// Deterministic grammar-constrained transport. The vocabulary choices carry data;
+// fixed articles provide agreement. All tokens are reversible and offline.
+// Six independent 7-bit choices (42 bits / sentence):
+// adjective, singular noun, adverb, singular transitive third-person verb,
+// adjective, singular noun.
+const GRAMMAR_ADJ = `\nancient amber active airy autumn bright blue brave brief broad calm careful cheerful clear clever coastal cool copper curious daily daring dark delicate distant dreamy early eastern easy elegant empty even fading fair familiar fancy far festive fine firm floral flowing fresh friendly gentle golden graceful grand green happy hidden hollow humble icy idle inner ivory joyful kind late lazy light lively local lonely long lovely loyal lucky lunar mellow mild misty modest morning moving narrow natural nearby neat new noble northern old open orange pale patient peaceful plain playful pleasant polished quiet rare rapid red remote rich ripe rising robust rosy round royal rustic sacred secret serene sharp shining silent silver simple slender slow small smooth soft solid southern spare spring steady still strong subtle sunny tender\n`.trim().split(/\s+/);
+const GRAMMAR_NOUN = `\nartist author baker banker bard bird boat book bridge brook builder candle captain castle cedar child citizen city cloud coach coast color comet companion corner cottage council country cousin dancer dawn desert doctor dream driver eagle echo editor elder engine farmer father field figure flower forest friend garden gate giant gift glass grove guest guide harbor harvest healer heart hero hill historian home horse hunter island keeper king lake lantern leader letter library light listener market meadow melody mentor message mirror mountain museum neighbor ocean orchard painter paper parent partner passage path pattern person philosopher pilot planet poet poetess portrait prince princess reader record region river road robin sailor scholar school sculptor season seeker shadow shelter singer sister sky soldier song spirit spring star station stone story stranger\n`.trim().split(/\s+/);
+const GRAMMAR_VERB = `\nadmires advises answers appreciates approaches arranges assists attracts balances blesses brings builds carries catches celebrates cherishes chooses collects compares completes considers comforts connects contains creates describes discovers draws encourages enjoys examines explores follows gathers greets guides handles helps honors hosts imagines improves includes inspires invites joins keeps knows leads lifts likes locates loves manages measures meets mentions moves names needs notices observes offers opens organizes paints passes praises prepares presents preserves protects provides raises reaches reads receives records remembers repairs respects restores reveals reviews saves searches sees selects sends serves shapes shares shelters shows sketches solves sorts studies supports teaches thanks touches traces trains transforms treats trusts understands unites uses values visits watches welcomes accepts accompanies acknowledges adopts applauds borrows calms captures checks clarifies delivers finds hears recognizes\n`.trim().split(/\s+/);
+const GRAMMAR_ADV = `\nably absolutely actively affectionately again agreeably alertly almost always amazingly anxiously aptly ardently artfully attentively beautifully boldly bravely brightly calmly candidly carefully casually certainly cheerfully clearly closely comfortably commonly compassionately confidently consciously constantly correctly courteously creatively curiously daily decisively deeply deliberately delicately diligently directly discreetly distinctly eagerly easily elegantly endlessly equally especially evenly faithfully firmly fondly freely frequently gently gladly gracefully gratefully happily harmoniously honestly hopefully humbly immediately inwardly joyfully kindly lightly likely lovingly loyally lucidly magically mainly meaningfully merrily mildly modestly naturally neatly nicely openly patiently peacefully perfectly plainly pleasantly politely positively powerfully precisely privately promptly proudly quietly rapidly readily really reasonably regularly reliably remarkably respectfully responsibly richly safely scarcely secretly sensibly serenely seriously sharply silently simply sincerely slowly smoothly softly solemnly sometimes soon steadily strongly subtly\n`.trim().split(/\s+/);
+
+const GRAMMAR_MAPS = [GRAMMAR_ADJ, GRAMMAR_NOUN, GRAMMAR_ADV,
+                      GRAMMAR_VERB, GRAMMAR_ADJ, GRAMMAR_NOUN]
+  .map(words => new Map(words.map((word, index) => [word, index])));
+const GRAMMAR_WORDS = [GRAMMAR_ADJ, GRAMMAR_NOUN, GRAMMAR_ADV,
+                       GRAMMAR_VERB, GRAMMAR_ADJ, GRAMMAR_NOUN];
+const GRAMMAR_FRAMES = [
+  ['The', 'the'], ['Each', 'that'], ['That', 'this'], ['This', 'the']
+];
+const PROSE_BITS = 42;
+for (const words of GRAMMAR_WORDS)
+  if (words.length !== 128 || new Set(words).size !== 128)
+    throw Error('Invalid embedded grammar dictionary (expected 128 distinct words per part of speech).');
+
+function asEnglishProse(frame) {
+  // Fixed capacity => decoder can infer exact sentence count from frame header.
+  const sentenceCount = Math.ceil(frame.length * 8 / PROSE_BITS);
+  const sentences = [];
+  let bitOffset = 0;
+  for (let n = 0; n < sentenceCount; ++n) {
+    const values = [];
+    for (let slot = 0; slot < 6; ++slot) {
+      let index = 0;
+      for (let b = 0; b < 7; ++b) {
+        const offset = bitOffset++;
+        const bit = offset < frame.length * 8
+          ? ((frame[offset >>> 3] >>> (7 - (offset & 7))) & 1) : 0;
+        index = (index << 1) | bit;
+      }
+      values.push(GRAMMAR_WORDS[slot][index]);
+    }
+    const [subjectArticle, objectArticle] = GRAMMAR_FRAMES[n & 3];
+    sentences.push(`${subjectArticle} ${values[0]} ${values[1]} ${values[2]} ${values[3]} ${objectArticle} ${values[4]} ${values[5]}.`);
+  }
+  const paras = [];
+  for (let i=0; i<sentences.length; i+=3) paras.push(sentences.slice(i,i+3).join(' '));
+  return {text:paras.join('\n\n'), count:sentenceCount * 8, sentences:sentenceCount};
+}
+
+function fromEnglishProse(text) {
+  const sentenceTexts = text.split('.').map(s => s.trim()).filter(Boolean);
+  if (!sentenceTexts.length) throw Error('No grammar-coded sentences found.');
+  const out = [];
+  let bits = 0, acc = 0;
+  for (let n=0; n<sentenceTexts.length; n++) {
+    const tokens = sentenceTexts[n].toLowerCase().match(/[a-z]+/g) || [];
+    if (tokens.length !== 8) throw Error(`Sentence ${n+1}: expected exactly eight words.`);
+    const [subject, object] = GRAMMAR_FRAMES[n & 3];
+    if (tokens[0] !== subject.toLowerCase() || tokens[5] !== object)
+      throw Error(`Sentence ${n+1}: grammar frame mismatch; check articles or sentence order.`);
+    const data = [tokens[1],tokens[2],tokens[3],tokens[4],tokens[6],tokens[7]];
+    for (let slot=0; slot<6; slot++) {
+      const index = GRAMMAR_MAPS[slot].get(data[slot]);
+      if (index === undefined)
+        throw Error(`Sentence ${n+1}: unknown ${['adjective','noun','adverb','verb','adjective','noun'][slot]}: "${data[slot]}".`);
+      acc = (acc << 7) | index;
+      bits += 7;
+      while (bits >= 8) {
+        bits -= 8;
+        out.push((acc >>> bits) & 255);
+        acc &= (1 << bits) - 1;
+        if (out.length > HEADER_SIZE + MAX_BYTES + 5)
+          throw Error('Decoded prose exceeds the 32 MiB safety limit.');
+      }
+    }
+  }
+  const frame = Uint8Array.from(out);
+  if (frame.length < HEADER_SIZE) throw Error('Incomplete sentence-encoded frame/header.');
+  for (let i = 0; i < MAGIC.length; i++)
+    if (frame[i] !== MAGIC[i]) throw Error('Frame signature mismatch; sentence data is corrupt.');
+  const originalLen = getU32(frame, 5), packedLen = getU32(frame, 9);
+  if (originalLen > MAX_BYTES || packedLen > MAX_BYTES)
+    throw Error('Declared file size is above the 32 MiB safety limit.');
+  const required = HEADER_SIZE + packedLen;
+  if (sentenceTexts.length !== Math.ceil(required * 8 / PROSE_BITS))
+    throw Error('Incorrect sentence count: encoded data is missing or has extra sentences.');
+  if (frame.length < required) throw Error('Truncated sentence-encoded payload.');
+  for (let i=required; i<frame.length; i++)
+    if (frame[i] !== 0) throw Error('Nonzero padding bytes in sentence data.');
+  if (acc !== 0) throw Error('Nonzero trailing padding bits in sentence data.');
+  return {codec:frame[4], originalLen, packed:frame.slice(HEADER_SIZE,required),
+          crc:getU32(frame,13), count:sentenceTexts.length * 8, sentences:sentenceTexts.length};
+}
+
+async function encodeBytes(raw, mode='auto', format='words') {
+  if (raw.length > MAX_BYTES) throw Error('Source exceeds the 32 MiB safety limit.');
+  let codec = 0, packed = raw;
+  if (mode === 'gzip') { packed = await gzipTransform(raw, false); codec = 1; }
+  else if (mode === 'lzss') { packed = lzssCompress(raw); codec = 2; }
+  else if (mode === 'auto') {
+    const lz = lzssCompress(raw);
+    if (lz.length < packed.length) { packed = lz; codec = 2; }
+    if (typeof CompressionStream === 'function') {
+      try { const gz = await gzipTransform(raw, false); if (gz.length < packed.length) { packed = gz; codec = 1; } }
+      catch (e) { /* native gzip not available; LZSS is self-contained */ }
+    }
+  }
+  if (packed.length > MAX_BYTES) throw Error('Packed file exceeds the 32 MiB safety limit.');
+  const frame = new Uint8Array(HEADER_SIZE + packed.length);
+  frame.set(MAGIC); frame[4] = codec;
+  putU32(frame, 5, raw.length); putU32(frame, 9, packed.length); putU32(frame, 13, crc32(raw));
+  frame.set(packed, HEADER_SIZE);
+  const english = format === 'prose' ? asEnglishProse(frame) : asEnglishWords(frame);
+  return { ...english, rawBytes: raw.length, packedBytes: packed.length, codec: ['raw','gzip','LZSS'][codec], crc: crc32(raw) };
+}
+async function decodeWords(text) {
+  const firstWord = (text.trim().match(/^[a-z]+/i) || [''])[0].toLowerCase();
+  const isProse = ['the','each','that','a'].includes(firstWord);
+  const frame = isProse ? fromEnglishProse(text) : fromEnglishWords(text);
+  let raw;
+  if (frame.codec === 0) raw = frame.packed;
+  else if (frame.codec === 1) raw = await gzipTransform(frame.packed, true);
+  else if (frame.codec === 2) raw = lzssDecompress(frame.packed, frame.originalLen);
+  else throw Error('Unknown compression identifier: ' + frame.codec);
+  if (raw.length !== frame.originalLen) throw Error('Original byte count does not match header.');
+  if (crc32(raw) !== frame.crc) throw Error('CRC-32 mismatch. At least one word has changed or data is corrupt.');
+  return { raw, ...frame, packedBytes: frame.packed.length, format: isProse ? 'prose' : 'words', codecName: ['raw','gzip','LZSS'][frame.codec] };
+}
+// Make the pure codec testable independently of the UI, e.g. from the DevTools console.
+window.LexicalCodec = Object.freeze({ encodeBytes, decodeWords, crc32, lzssCompress, lzssDecompress, asEnglishProse, fromEnglishProse });
+const el = id => document.getElementById(id);
+let preservedBytes = null, sourceFilename = 'restored.html';
+let busy = false;
+function setMessage(message, type='') { const e = el('message'); e.className = 'message ' + type; e.textContent = message; }
+function stats(raw, packed, words, characters) {
+  el('rawStat').textContent = raw.toLocaleString();
+  el('packedStat').textContent = packed.toLocaleString();
+  el('wordsStat').textContent = words.toLocaleString();
+  el('ratioStat').textContent = raw ? (characters / raw).toFixed(2) + '×' : 'n/a';
+}
+function setBusy(value) {
+  busy = value;
+  el('encode').disabled = value; el('decode').disabled = value;
+}
+function downloadBytes(data, name, mime) {
+  const url = URL.createObjectURL(new Blob([data], {type:mime}));
+  const a = document.createElement('a'); a.href = url; a.download = name;
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 3000);
+}
+function updateModeHint() {
+  el('modeHint').textContent = el('format').value === 'prose' ? 'Grammatical sentences · 42 bits/sentence' : 'BIP-39 vocabulary · 11 bits/word';
+}
+el('format').addEventListener('change', updateModeHint);
+updateModeHint();
+el('source').addEventListener('input', () => { preservedBytes = null; });
+el('file').addEventListener('change', async e => {
+  const file = e.target.files?.[0]; if (!file) return;
+  if (file.size > MAX_BYTES) { setMessage('File exceeds the 32 MiB safety limit.', 'error'); return; }
+  preservedBytes = new Uint8Array(await file.arrayBuffer());
+  sourceFilename = file.name; el('filename').value = sourceFilename;
+  el('source').value = new TextDecoder('utf-8', {ignoreBOM:true}).decode(preservedBytes);
+  setMessage(`Loaded ${file.name} (${preservedBytes.length.toLocaleString()} bytes). The original file bytes will be encoded unchanged.`, 'ok');
+});
+el('demo').addEventListener('click', () => {
+  el('source').value = `<!doctype html>\n<html lang="en">\n<head><meta charset="utf-8"><title>Sample</title></head>\n<body>\n<h1>Hello from the lexical codec!</h1>\n<script>\n  const greeting = "Hello 🌍";\n  for (let i = 0; i < 20; i++) console.log(greeting, i);\n<` + `/script>\n</body></html>`;
+  preservedBytes = null; sourceFilename = 'sample.html'; el('filename').value = sourceFilename;
+  setMessage('Example HTML loaded. Click Encode → to generate English text.');
+});
+el('encode').addEventListener('click', async () => {
+  if (busy) return;
+  setBusy(true);
+  try {
+    const raw = preservedBytes || ENCODER.encode(el('source').value);
+    const result = await encodeBytes(raw, el('compression').value, el('format').value);
+    el('words').value = result.text;
+    stats(result.rawBytes, result.packedBytes, result.count, result.text.length);
+    setMessage(`Encoded successfully as ${el('format').value === 'prose' ? 'grammatical sentences' : 'BIP-39 words'}: ${result.codec}; CRC-32 ${result.crc.toString(16).padStart(8,'0')}. Original bytes can be restored.`, 'ok');
+  } catch (err) { setMessage('Encoding failed: '+err.message, 'error'); }
+  finally { setBusy(false); }
+});
+el('decode').addEventListener('click', async () => {
+  if (busy) return;
+  setBusy(true);
+  try {
+    const result = await decodeWords(el('words').value);
+    preservedBytes = result.raw;
+    el('source').value = new TextDecoder('utf-8', {ignoreBOM:true}).decode(result.raw);
+    stats(result.raw.length, result.packedBytes, result.count, el('words').value.length);
+    el('format').value = result.format;
+    updateModeHint();
+    setMessage(`Decoded successfully (${result.format === 'prose' ? 'grammar' : 'word-list'} / ${result.codecName}); exact byte length and CRC-32 verified.`, 'ok');
+  } catch (err) { setMessage('Decoding failed: '+err.message, 'error'); }
+  finally { setBusy(false); }
+});
+el('copy').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText(el('words').value); setMessage('Encoded text copied to clipboard.', 'ok'); }
+  catch(e) { el('words').focus(); el('words').select(); setMessage('Clipboard access blocked (often on file://). Press Ctrl/Cmd+C to copy the selected words.'); }
+});
+el('saveWords').addEventListener('click', () => downloadBytes(ENCODER.encode(el('words').value), 'source-english-'+el('format').value+'.txt','text/plain;charset=utf-8'));
+el('saveSource').addEventListener('click', () => {
+  const raw = preservedBytes || ENCODER.encode(el('source').value);
+  downloadBytes(raw, el('filename').value.trim() || sourceFilename, 'application/octet-stream');
+});
+</script>
+</body>
+</html>
