@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Speaker → Microphone Test</title>
+<style>
+  body { max-width: 520px; margin: 50px auto; padding: 0 20px; font: 16px/1.5 system-ui, sans-serif; color: #17202a; }
+  button { padding: 10px 16px; margin: 0 6px 10px 0; font: inherit; cursor: pointer; }
+  button:disabled { opacity: .45; cursor: default; }
+  #status { padding: 12px; background: #f1f4f6; border-radius: 6px; margin: 12px 0; }
+  meter { width: 100%; height: 20px; }
+  small { color: #555; }
+</style>
+</head>
+<body>
+  <h2>Speaker → Microphone Test</h2>
+  <p>Play a 1,000 Hz beep through the default speaker and detect it acoustically through the microphone.</p>
+
+  <button id="start">Enable microphone</button>
+  <button id="play" disabled>Play test tone</button>
+  <button id="stop" disabled>Stop</button>
+  <div id="status" role="status" aria-live="polite">Microphone not enabled.</div>
+
+  <label for="meter">Microphone level</label>
+  <meter id="meter" min="0" max="100" value="0"></meter>
+  <p id="details"><small>Detected 1,000 Hz tone: —</small></p>
+  <small>Allow microphone access when prompted. Turn up your speaker volume. The microphone is <b>not</b> sent to the speaker, preventing feedback. Echo cancellation is requested off; the browser/OS may still process the audio.</small>
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const FREQ = 1000;
+const N = 4096;
+let audio, stream, analyser, source, samples, cosine, sine, windowFn;
+let frameId, oscillator, baseline = 0, latestTone = 0;
+let testing = false, heard = false, peak = 0, threshold = 0, testStart = 0, testEnd = 0;
+
+function setStatus(message) { $('status').textContent = message; }
+
+function initializeDetector(sampleRate) {
+  samples = new Float32Array(N);
+  cosine = new Float32Array(N);
+  sine = new Float32Array(N);
+  windowFn = new Float32Array(N);
+  for (let i = 0; i < N; i++) {
+    const phase = 2 * Math.PI * FREQ * i / sampleRate;
+    cosine[i] = Math.cos(phase);
+    sine[i] = Math.sin(phase);
+    windowFn[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (N - 1));
+  }
+}
+
+function monitor() {
+  analyser.getFloatTimeDomainData(samples);
+  let real = 0, imag = 0, power = 0;
+  for (let i = 0; i < N; i++) {
+    const value = samples[i];
+    const weighted = value * windowFn[i];
+    real += weighted * cosine[i];
+    imag += weighted * sine[i];
+    power += value * value;
+  }
+
+  // Magnitude of a 1 kHz component, plus overall microphone RMS.
+  const tone = (4 / N) * Math.hypot(real, imag);
+  const rms = Math.sqrt(power / N);
+  latestTone = tone;
+  $('meter').value = Math.min(100, rms * 500);
+  $('details').innerHTML = `<small>1,000 Hz amplitude: ${tone.toFixed(4)} · Mic RMS: ${rms.toFixed(4)}</small>`;
+
+  const now = performance.now();
+  if (!testing) {
+    baseline = baseline * 0.94 + tone * 0.06;
+  } else {
+    peak = Math.max(peak, tone);
+    const prominence = tone / Math.max(rms * Math.SQRT2, 0.000001);
+    if (now > testStart + 100 && now < testEnd && tone > threshold && prominence > 0.22) {
+      heard = true;
+      setStatus('✓ Speaker tone detected through the microphone!');
+    }
+    if (now > testEnd) {
+      testing = false;
+      $('play').disabled = false;
+      setStatus(heard
+        ? `✓ Detected! Peak 1 kHz amplitude: ${peak.toFixed(4)}`
+        : `No tone detected (peak ${peak.toFixed(4)}). Increase speaker volume or move microphone closer.`);
+    }
+  }
+  frameId = requestAnimationFrame(monitor);
+}
+
+$('start').onclick = async () => {
+  $('start').disabled = true;
+  setStatus('Requesting microphone permission…');
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    audio = new AudioContextClass();
+    await audio.resume();
+    stream = await navigator.mediaDevices.getUserMedia({ audio: {
+      echoCancellation: false, noiseSuppression: false, autoGainControl: false
+    }});
+    source = audio.createMediaStreamSource(stream);
+    analyser = audio.createAnalyser();
+    analyser.fftSize = N;
+    source.connect(analyser); // Crucial: NO connection from microphone to speakers.
+    initializeDetector(audio.sampleRate);
+    $('play').disabled = false;
+    $('stop').disabled = false;
+    setStatus('Microphone enabled. Click “Play test tone”.');
+    monitor();
+  } catch (err) {
+    setStatus(`Could not start: ${err.message}`);
+    if (stream) stream.getTracks().forEach(track => track.stop());
+    if (audio) await audio.close();
+    stream = audio = null;
+    $('start').disabled = false;
+  }
+};
+
+$('play').onclick = async () => {
+  if (!audio || testing) return;
+  await audio.resume();
+  testing = true;
+  heard = false;
+  peak = 0;
+  threshold = Math.max(0.0015, baseline * 3.5, latestTone * 2.5);
+  $('play').disabled = true;
+  setStatus('Playing 1,000 Hz tone and listening…');
+
+  oscillator = audio.createOscillator();
+  const volume = audio.createGain();
+  oscillator.type = 'sine';
+  oscillator.frequency.value = FREQ;
+  oscillator.connect(volume);
+  volume.connect(audio.destination); // Browser/OS default speaker.
+  const t = audio.currentTime + 0.04;
+  volume.gain.setValueAtTime(0, t);
+  volume.gain.linearRampToValueAtTime(0.22, t + 0.02);
+  volume.gain.setValueAtTime(0.22, t + 0.65);
+  volume.gain.linearRampToValueAtTime(0, t + 0.69);
+  oscillator.start(t);
+  oscillator.stop(t + 0.70);
+  oscillator.onended = () => { oscillator.disconnect(); volume.disconnect(); };
+  testStart = performance.now() + 40;
+  testEnd = testStart + 800;
+};
+
+$('stop').onclick = async () => {
+  cancelAnimationFrame(frameId);
+  testing = false;
+  try { if (oscillator) oscillator.stop(); } catch (_) { /* already stopped */ }
+  if (stream) stream.getTracks().forEach(track => track.stop());
+  if (audio) await audio.close();
+  audio = stream = analyser = source = oscillator = null;
+  baseline = latestTone = 0;
+  $('start').disabled = false;
+  $('play').disabled = true;
+  $('stop').disabled = true;
+  $('meter').value = 0;
+  setStatus('Stopped.');
+};
+</script>
+</body>
+</html>
