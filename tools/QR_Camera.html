@@ -28,6 +28,18 @@
     .inflation-note.ok { color: #176448; }
     .merge-controls { margin-top: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
     .merge-controls select { flex: 1; min-width: 170px; width: auto; }
+    [hidden] { display: none !important; }
+    .transfer-summary { margin: 12px 0 4px; padding: 13px 15px; border-radius: 10px;
+      background: #f4f7ff; border: 1px solid #dce5f7; font-size: .91rem; }
+    .transfer-summary strong { overflow-wrap: anywhere; }
+    .transfer-summary > div { margin: 4px 0; }
+    .transfer-summary progress { width: 100%; height: 12px; accent-color: #156b51; margin-top: 7px; }
+    .transfer-summary .missing { color: #53617b; overflow-wrap: anywhere; }
+    .manual-frames { margin-top: 14px; border-top: 1px solid #e4e9f2; padding-top: 12px; }
+    .manual-frames summary { cursor: pointer; font-weight: 600; color: #3a4c65; }
+    .manual-frames textarea { display: block; width: 100%; min-height: 80px; max-height: 240px;
+      resize: vertical; margin: 10px 0; padding: 10px; border: 1px solid #ccd4e3;
+      border-radius: 9px; font: .85rem/1.5 ui-monospace, monospace; }
     .merge-count { font-size: .91rem; font-weight: 600; color: #215c48; }
     .checkbox-label { display: inline-flex; align-items: center; gap: 7px; font-size: .91rem; color: #394d66; cursor: pointer; }
     .checkbox-label input { width: 17px; height: 17px; accent-color: #1756d8; }
@@ -40,6 +52,7 @@
     #qr-reader { width: 100%; min-height: 0; color: white; }
     #qr-reader video { width: 100% !important; height: auto !important; max-height: 440px; object-fit: contain; border-radius: 8px; }
     #qr-reader canvas { max-width: 100%; }
+    #qr-reader video, #qr-reader img { display: block; width: 100%; object-fit: contain; }
     #empty-preview { position: absolute; inset: 0; display: grid; place-content: center; gap: 10px; padding: 22px; text-align: center; color: #ccd6eb; pointer-events: none; }
     #empty-preview[hidden] { display: none; }
     #empty-preview .camera-icon { font-size: 2.8rem; }
@@ -65,7 +78,7 @@
 <body>
 <main>
   <h1>QR Code Reader</h1>
-  <p class="subtitle">Scan a QR code with your camera or select an image. The decoder works locally; no network or installation is required.</p>
+  <p class="subtitle">Scan QRmulti sequences with adaptive resolution scanning. All decoding runs locally, without an internet connection.</p>
 
   <section class="panel" aria-label="Camera scanner">
     <div id="reader-shell">
@@ -76,6 +89,7 @@
       <button class="button primary" id="start-button" type="button">Start camera</button>
       <button class="button" id="stop-button" type="button" disabled>Stop camera</button>
       <button class="button" id="merge-button" type="button" aria-pressed="false" disabled>Start merge capture</button>
+      <button class="button" id="reset-capture" type="button" disabled>Clear buffer / New transfer</button>
       <button class="button" id="inflate-button" type="button" aria-pressed="false" title="Detect and decompress DEFLATE before exporting binary">Inflate before download: Off</button>
     </div>
     <div class="merge-controls">
@@ -84,19 +98,48 @@
       <span id="duplicate-count" class="small" aria-live="polite">Duplicates skipped: 0</span>
     </div>
     <div class="merge-controls">
+      <label for="capture-protocol" class="checkbox-label">Capture protocol</label>
+      <select id="capture-protocol">
+        <option value="qrf1" selected>QRmulti — QRF1 file reconstruction</option>
+        <option value="plain">Plain QR fragments (legacy)</option>
+      </select>
+    </div>
+    <div class="merge-controls" id="plain-merge-controls" hidden>
       <label for="merge-format" class="checkbox-label">Merge format</label>
       <select id="merge-format">
         <option value="lines">One QR per line</option>
         <option value="concat">Concatenate without separator</option>
       </select>
     </div>
-    <p id="merge-status" class="small" aria-live="polite">Start the camera, then enable merge capture to collect distinct QR contents in order. Duplicate codes are never appended twice in one session.</p>
+    <p id="merge-status" class="small" aria-live="polite">QRmulti mode: scan QRF1 parts in any order. Chunks are keyed by transfer ID and part number; duplicates are ignored.</p>
+    <div id="transfer-summary" class="transfer-summary" aria-live="polite" hidden>
+      <div>Filename: <strong id="transfer-filename">—</strong></div>
+      <div>Transfer ID: <strong id="transfer-id">—</strong></div>
+      <div>Parts received: <strong id="transfer-progress">0/0</strong></div>
+      <progress id="transfer-progressbar" value="0" max="1" aria-label="QRmulti transfer completion"></progress>
+      <div class="missing" id="transfer-missing">No parts received.</div>
+    </div>
     <p id="inflate-status" class="small inflation-note" aria-live="polite">Inflate mode is off. Merged scans are exported as UTF-8 text.</p>
     <a id="merge-download" class="download-link" href="#" download hidden>Download merged TXT</a>
+    <details id="manual-frames-section" class="manual-frames">
+      <summary>Import QRF1 payload text instead of scanning (optional)</summary>
+      <p class="small">Paste one or more complete QRF1 lines copied from QRmulti. This is a fallback for QR images that are difficult for the camera decoder to read.</p>
+      <textarea id="manual-frames" placeholder="QRF1|transfer-id|part|total|..." aria-label="QRF1 payloads, one per line"></textarea>
+      <button type="button" class="button" id="import-frames" disabled>Import payload(s) into active capture</button>
+    </details>
     <label class="select-label" for="camera-select">Camera</label>
     <select id="camera-select" aria-label="Select camera">
       <option value="">Automatic (prefer rear camera)</option>
     </select>
+    <div class="merge-controls">
+      <label for="scan-quality" class="checkbox-label">Scanning detail</label>
+      <select id="scan-quality" aria-label="QR scanner detail level">
+        <option value="fast">Fast (lower CPU)</option>
+        <option value="auto" selected>Adaptive (recommended)</option>
+        <option value="dense">Dense QR (more resolution attempts)</option>
+      </select>
+    </div>
+    <p class="small" id="decoder-status" aria-live="polite">Decoder: Adaptive ZXing (offline)</p>
     <p id="scanner-status" class="status" role="status" aria-live="polite">Ready. Select Start camera and allow camera access.</p>
   </section>
 
@@ -114,10 +157,11 @@
     <h2>Scan an image instead</h2>
     <label class="file-label" for="image-file">Choose a photo or screenshot containing a QR code.</label>
     <input id="image-file" type="file" accept="image/*">
-    <p class="small">Selecting an image stops the camera while the image is scanned. You can restart the camera afterward. Only camera scans are added to merge capture.</p>
+    <p class="small">Selecting an image stops the camera while it is scanned. In QRmulti mode, image scans can also add QRF1 chunks to an active capture, even without a running camera. Plain mode retains camera-only merge capture.</p>
   </section>
 
-  <p class="small">With <strong>Inflate before download</strong> enabled, merged QR text is concatenated, decoded as Base64/hexadecimal when detected, and decompressed using embedded Pako (zlib, gzip, or raw DEFLATE). Output is a binary <code>.bin</code> file. Uncompressed input is exported as original bytes; invalid compressed streams are reported instead of silently changed. For lossless transport of arbitrary binary data, encode the compressed stream as Base64 or hexadecimal <em>before</em> making QR codes.</p>
+  <p class="small"><strong>QRmulti / QRF1 mode</strong> reconstructs the original file regardless of scan order, checks the complete compressed byte count and CRC32, decompresses it with embedded Pako, verifies the original byte count, and preserves the original filename. A download is available only when every part passes validation. Use <strong>Plain QR fragments</strong> for the previous unstructured merge behavior. Very dense QR codes may require a closer, sharply focused camera image; lower QR TypeNumbers are generally easier to scan.</p>
+  <p class="small">For plain QR fragments, with <strong>Inflate before download</strong> enabled, merged QR text is concatenated, decoded as Base64/hexadecimal when detected, and decompressed using embedded Pako (zlib, gzip, or raw DEFLATE). Output is a binary <code>.bin</code> file. Uncompressed input is exported as original bytes; invalid compressed streams are reported instead of silently changed. For lossless transport of arbitrary binary data, encode the compressed stream as Base64 or hexadecimal <em>before</em> making QR codes.</p>
   <p class="small">Camera access depends on your browser's security rules. Most browsers permit it on HTTPS or localhost; some also permit locally opened HTML files (file://). If camera access is unavailable, the image-scanning option still works. Scanned links are never opened automatically.</p>
 </main>
 
@@ -147,6 +191,7 @@ var __Html5QrcodeLibrary__;(()=>{var t={449:function(t,e,r){!function(t){"use st
   const imageFile = el('image-file');
   const beepToggle = el('beep-toggle');
   const mergeButton = el('merge-button');
+  const resetCaptureButton = el('reset-capture');
   const mergeStatus = el('merge-status');
   const mergeCount = el('merge-count');
   const duplicateCount = el('duplicate-count');
@@ -154,6 +199,17 @@ var __Html5QrcodeLibrary__;(()=>{var t={449:function(t,e,r){!function(t){"use st
   const mergeDownload = el('merge-download');
   const inflateButton = el('inflate-button');
   const inflateStatus = el('inflate-status');
+  const captureProtocol = el('capture-protocol');
+  const plainMergeControls = el('plain-merge-controls');
+  const transferSummary = el('transfer-summary');
+  const transferFilename = el('transfer-filename');
+  const transferId = el('transfer-id');
+  const transferProgress = el('transfer-progress');
+  const transferProgressbar = el('transfer-progressbar');
+  const transferMissing = el('transfer-missing');
+  const manualFramesSection = el('manual-frames-section');
+  const manualFrames = el('manual-frames');
+  const importFrames = el('import-frames');
 
   // The decoder is embedded above: no CDN, build step, or external JS file.
   const oReader = new Html5Qrcode('qr-reader', {
@@ -184,6 +240,10 @@ var __Html5QrcodeLibrary__;(()=>{var t={449:function(t,e,r){!function(t){"use st
   let sMergeFilename = '';
   let bInflateBeforeDownload = false;
   let sFormatBeforeInflate = 'lines';
+  // QRmulti QRF1: each part is an indexed slice of ONE zlib-compressed binary stream.
+  // Never concatenate QRF1 frames or append slices in camera-detection order.
+  let oQrfTransfer = null;
+  const MAX_QRF_PARTS = 100000;
   const MAX_INFLATED_BYTES = 64 * 1024 * 1024; // Safety limit: 64 MiB.
 
   function setStatus(message, kind) {
@@ -206,16 +266,26 @@ var __Html5QrcodeLibrary__;(()=>{var t={449:function(t,e,r){!function(t){"use st
     cameraSelect.disabled = bBusy;
     imageFile.disabled = bBusy;
     // A running session can still be completed after the camera is stopped.
-    mergeButton.disabled = bBusy || (!bScanning && !bMergeCapture);
+    mergeButton.disabled = bBusy || (!bScanning && !bMergeCapture && captureProtocol.value !== 'qrf1');
+    resetCaptureButton.disabled = bBusy || bMergeCapture ||
+      !(oQrfTransfer || aMergePayloads.length || iDuplicateScans);
     mergeButton.setAttribute('aria-pressed', String(bMergeCapture));
     mergeButton.textContent = bMergeCapture ? 'Finish merge capture' : 'Start merge capture';
     mergeButton.classList.toggle('capture-active', bMergeCapture);
-    inflateButton.setAttribute('aria-pressed', String(bInflateBeforeDownload));
-    inflateButton.textContent = 'Inflate before download: ' + (bInflateBeforeDownload ? 'On' : 'Off');
-    inflateButton.classList.toggle('inflate-active', bInflateBeforeDownload);
-    mergeFormat.disabled = bInflateBeforeDownload;
-    mergeCount.textContent = 'Chunks buffered: ' + aMergePayloads.length;
+    const qrf1 = captureProtocol.value === 'qrf1';
+    captureProtocol.disabled = bMergeCapture || bBusy;
+    plainMergeControls.hidden = qrf1;
+    inflateButton.disabled = qrf1 || bBusy;
+    inflateButton.setAttribute('aria-pressed', String(qrf1 || bInflateBeforeDownload));
+    inflateButton.textContent = qrf1 ? 'Inflate: automatic (QRF1)' :
+      'Inflate before download: ' + (bInflateBeforeDownload ? 'On' : 'Off');
+    inflateButton.classList.toggle('inflate-active', qrf1 || bInflateBeforeDownload);
+    mergeFormat.disabled = qrf1 || bInflateBeforeDownload;
+    mergeCount.textContent = 'Chunks buffered: ' + (qrf1 ? (oQrfTransfer?.parts.size || 0) : aMergePayloads.length);
     duplicateCount.textContent = 'Duplicates skipped: ' + iDuplicateScans;
+    transferSummary.hidden = !qrf1 || !oQrfTransfer;
+    manualFramesSection.hidden = !qrf1;
+    importFrames.disabled = bBusy || !bMergeCapture || !qrf1;
     emptyPreview.hidden = bScanning || bShowingImage;
   }
 
@@ -279,6 +349,175 @@ var __Html5QrcodeLibrary__;(()=>{var t={449:function(t,e,r){!function(t){"use st
     }
   }
 
+  function parseQrf1Payload(text) {
+    // Exact QRmulti.html format:
+    // QRF1|transfer-id|part|total|original-bytes|compressed-bytes|crc32|filename-base64url|data-base64url
+    const fields = text.trim().split('|');
+    if (fields.length !== 9 || fields[0] !== 'QRF1') throw new Error('This QR is not a QRmulti QRF1 part. Select Plain QR fragments for unstructured data.');
+    const [magic, id, partText, totalText, origText, compText, crc, name64, data64] = fields;
+    const decimal = (value, description, minimum, maximum) => {
+      if (!/^(0|[1-9][0-9]*)$/.test(value)) throw new Error('Invalid ' + description);
+      const number = Number(value);
+      if (!Number.isSafeInteger(number) || number < minimum || number > maximum) {
+        throw new Error('Invalid ' + description + ' (' + value + ')');
+      }
+      return number;
+    };
+    if (!/^[0-9a-f]{16}$/i.test(id)) throw new Error('Invalid QRF1 transfer ID');
+    const total = decimal(totalText, 'total part count', 1, MAX_QRF_PARTS);
+    const index = decimal(partText, 'part index', 1, total);
+    const originalSize = decimal(origText, 'original size', 0, MAX_INFLATED_BYTES);
+    const compressedSize = decimal(compText, 'compressed size', 1, MAX_INFLATED_BYTES);
+    if (!/^[a-f0-9]{8}$/i.test(crc)) throw new Error('Invalid QRF1 CRC32');
+    if (!/^[A-Za-z0-9_-]+$/.test(name64) || name64.length % 4 === 1) throw new Error('Invalid QRF1 filename encoding');
+    if (!/^[A-Za-z0-9_-]*$/.test(data64) || data64.length % 4 === 1) throw new Error('Invalid QRF1 chunk encoding');
+    const decodeBase64Url = (input) => {
+      const normalized = input.replace(/-/g, '+').replace(/_/g, '/');
+      const binary = atob(normalized + '='.repeat((4 - normalized.length % 4) % 4));
+      return Uint8Array.from(binary, character => character.charCodeAt(0));
+    };
+    const filename = new TextDecoder('utf-8', { fatal: true }).decode(decodeBase64Url(name64));
+    const data = decodeBase64Url(data64);
+    if (data.length > compressedSize) throw new Error('QRF1 part exceeds total compressed size');
+    return { magic, id: id.toLowerCase(), index, total, originalSize, compressedSize,
+      crc: crc.toLowerCase(), name64, filename, data, raw: text.trim() };
+  }
+
+  function safeQrfFilename(name) {
+    // QRmulti's generated filename is a basename. Do not accept traversal or filesystem separators.
+    const sanitized = String(name || 'restored.bin').replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').trim();
+    return sanitized.slice(0, 240) || 'restored.bin';
+  }
+
+  function crc32(bytes) {
+    // Same reflected IEEE CRC32 polynomial as QRmulti.html.
+    let crc = 0xffffffff;
+    for (let i = 0; i < bytes.length; i++) {
+      crc ^= bytes[i];
+      for (let bit = 0; bit < 8; bit++) {
+        crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1));
+      }
+    }
+    return (crc ^ 0xffffffff) >>> 0;
+  }
+
+  function hex32(value) { return value.toString(16).padStart(8, '0'); }
+
+  function missingQrfParts(maxShown = 30) {
+    if (!oQrfTransfer) return { missing: [], remaining: 0 };
+    const missing = [];
+    for (let i = 1; i <= oQrfTransfer.total && missing.length < maxShown; i++) {
+      if (!oQrfTransfer.parts.has(i)) missing.push(i);
+    }
+    return { missing, remaining: oQrfTransfer.total - oQrfTransfer.parts.size };
+  }
+
+  function updateQrfSummary() {
+    if (!oQrfTransfer) return;
+    const t = oQrfTransfer;
+    transferFilename.textContent = safeQrfFilename(t.filename);
+    transferId.textContent = t.id;
+    transferProgress.textContent = t.parts.size + '/' + t.total;
+    transferProgressbar.value = t.parts.size;
+    transferProgressbar.max = t.total;
+    const progress = missingQrfParts();
+    transferMissing.textContent = progress.remaining ?
+      'Missing ' + progress.remaining + ' part(s): ' + progress.missing.join(', ') +
+        (progress.remaining > progress.missing.length ? ', …' : '') :
+      'All chunks received. Ready to validate and reconstruct the file.';
+    transferSummary.hidden = false;
+  }
+
+  function recordQrfChunk(decodedText) {
+    let part;
+    try {
+      part = parseQrf1Payload(decodedText);
+      if (!oQrfTransfer) {
+        oQrfTransfer = { id: part.id, total: part.total,
+          originalSize: part.originalSize, compressedSize: part.compressedSize,
+          crc: part.crc, name64: part.name64, filename: part.filename, parts: new Map() };
+      }
+      const t = oQrfTransfer;
+      if (part.id !== t.id) throw new Error('Different transfer ID (' + part.id + '). Finish or start a new session for the next file.');
+      for (const key of ['total', 'originalSize', 'compressedSize', 'crc', 'name64']) {
+        if (t[key] !== part[key]) throw new Error('Conflicting QRF1 metadata in part ' + part.index + ': ' + key);
+      }
+      if (t.parts.has(part.index)) {
+        const stored = t.parts.get(part.index);
+        if (stored.raw !== part.raw) throw new Error('Conflicting data for QRF1 part ' + part.index + '; original chunk preserved.');
+        iDuplicateScans++;
+        updateQrfSummary();
+        updateControls();
+        setMergeStatus('Duplicate part ' + part.index + ' ignored. ' + t.parts.size + '/' + t.total + ' chunks buffered.');
+        setStatus('QRF1 part ' + part.index + ' already buffered. No duplicate data added.');
+        return false;
+      }
+      t.parts.set(part.index, part);
+      updateQrfSummary();
+      updateControls();
+      const remaining = t.total - t.parts.size;
+      setMergeStatus('QRF1 part ' + part.index + '/' + t.total + ' stored (' + t.parts.size +
+        ' unique). ' + (remaining ? remaining + ' part(s) still needed.' : 'All parts received. Finish capture to restore the file.'));
+      return true;
+    } catch (error) {
+      setMergeStatus('QRmulti capture warning: ' + error.message);
+      setStatus('Chunk not accepted: ' + error.message, 'error');
+      return false;
+    }
+  }
+
+  function prepareQrfDownload() {
+    if (!oQrfTransfer) {
+      setMergeStatus('No QRF1 parts captured. Nothing to download.');
+      return;
+    }
+    const t = oQrfTransfer;
+    const progress = missingQrfParts();
+    if (progress.remaining) {
+      setMergeStatus('QRF1 transfer incomplete: ' + t.parts.size + '/' + t.total +
+        ' parts. Missing ' + progress.remaining + ': ' + progress.missing.join(', ') +
+        (progress.remaining > progress.missing.length ? ', …' : '') +
+        '. Restart capture to scan the missing parts.');
+      setInflateStatus('No download: all QRF1 parts are required.', 'error');
+      return;
+    }
+    try {
+      const chunks = [];
+      let size = 0;
+      for (let index = 1; index <= t.total; index++) {
+        const bytes = t.parts.get(index).data;
+        size += bytes.length;
+        if (size > t.compressedSize) throw new Error('Compressed size exceeds QRF1 metadata');
+        chunks.push(bytes);
+      }
+      if (size !== t.compressedSize) throw new Error('Compressed size mismatch: expected ' +
+        t.compressedSize + ' bytes, reconstructed ' + size);
+      const compressed = new Uint8Array(size);
+      let offset = 0;
+      for (const chunk of chunks) { compressed.set(chunk, offset); offset += chunk.length; }
+      const actualCrc = hex32(crc32(compressed));
+      if (actualCrc !== t.crc) throw new Error('CRC32 mismatch: expected ' + t.crc + ', got ' + actualCrc);
+      const original = inflateBytes(compressed, false);
+      if (original.length !== t.originalSize) throw new Error('Original file size mismatch: expected ' +
+        t.originalSize + ' bytes, restored ' + original.length);
+      sMergeFileUrl = URL.createObjectURL(new Blob([original], { type: 'application/octet-stream' }));
+      mergeDownload.href = sMergeFileUrl;
+      mergeDownload.download = safeQrfFilename(t.filename);
+      mergeDownload.textContent = 'Download restored file (' + t.parts.size + ' parts)';
+      mergeDownload.hidden = false;
+      const message = 'Validated QRF1 transfer ' + t.id + ': ' + size.toLocaleString() +
+        ' compressed bytes, CRC32 ' + actualCrc + ' → ' + original.length.toLocaleString() +
+        ' original bytes. Filename: ' + safeQrfFilename(t.filename);
+      setMergeStatus('All ' + t.total + ' parts reconstructed in sequence order; ' +
+        iDuplicateScans + ' duplicate(s) skipped. File ready.');
+      setInflateStatus(message, 'ok');
+      setStatus('QRmulti file restored successfully. Download is ready.', 'ok');
+    } catch (error) {
+      setInflateStatus('QRF1 reconstruction failed: ' + error.message + '. No file was generated.', 'error');
+      setMergeStatus('Verification failed. ' + error.message + '. No invalid file will be offered.');
+    }
+  }
+
   function recordDecodedText(decodedText, source) {
     // Keep the exact decoded bytes-as-text. Never interpret a QR payload as HTML.
     sLastText = decodedText;
@@ -300,7 +539,9 @@ var __Html5QrcodeLibrary__;(()=>{var t={449:function(t,e,r){!function(t){"use st
       // Other QR payloads remain plain text, with no automatic navigation.
     }
 
-    if (source === 'camera' && bMergeCapture) {
+    if (bMergeCapture && captureProtocol.value === 'qrf1' && (source === 'camera' || source === 'image' || source === 'manual')) {
+      if (!recordQrfChunk(decodedText)) return; // Do not beep for duplicates or invalid QRF1 data.
+    } else if (source === 'camera' && bMergeCapture) {
       // Exact payload equality (no trim/normalization) avoids corrupting Base64,
       // hexadecimal, or binary-as-text fragments before the merged export.
       if (oCapturedPayloads.has(decodedText)) {
@@ -318,7 +559,8 @@ var __Html5QrcodeLibrary__;(()=>{var t={449:function(t,e,r){!function(t){"use st
         ' total). Scan another QR or finish capture to download.');
     }
     playBeep();
-    setStatus(source === 'camera' ? 'QR code decoded successfully.' : 'QR code decoded from image.', 'ok');
+    setStatus(source === 'camera' ? 'QR code decoded successfully.' :
+      source === 'manual' ? 'QRF1 payload imported successfully.' : 'QR code decoded from image.', 'ok');
   }
 
   function onCameraScanSuccess(decodedText) {
@@ -507,7 +749,12 @@ var __Html5QrcodeLibrary__;(()=>{var t={449:function(t,e,r){!function(t){"use st
 
   function prepareDownload() {
     discardDownload();
-    if (!aMergePayloads.length || bMergeCapture) return;
+    if (bMergeCapture) return;
+    if (captureProtocol.value === 'qrf1') {
+      prepareQrfDownload();
+      return;
+    }
+    if (!aMergePayloads.length) return;
     if (!sMergeFilename) sMergeFilename = makeFilenameBase();
     if (!bInflateBeforeDownload) {
       const separator = mergeFormat.value === 'concat' ? '' : '\n';
@@ -540,6 +787,7 @@ var __Html5QrcodeLibrary__;(()=>{var t={449:function(t,e,r){!function(t){"use st
   }
 
   function toggleInflate() {
+    if (captureProtocol.value === 'qrf1') return; // QRmulti always uses zlib and restores original bytes.
     bInflateBeforeDownload = !bInflateBeforeDownload;
     if (bInflateBeforeDownload) {
       sFormatBeforeInflate = mergeFormat.value;
@@ -556,21 +804,34 @@ var __Html5QrcodeLibrary__;(()=>{var t={449:function(t,e,r){!function(t){"use st
   function toggleMergeCapture() {
     if (bBusy) return;
     if (!bMergeCapture) {
-      if (!bScanning) return;
+      if (!bScanning && captureProtocol.value !== 'qrf1') return;
       armBeep();
       discardDownload();
+      const bResumeQrf1 = captureProtocol.value === 'qrf1' && oQrfTransfer &&
+        oQrfTransfer.parts.size < oQrfTransfer.total;
       aMergePayloads = [];
+      if (!bResumeQrf1) oQrfTransfer = null;
+      transferSummary.hidden = true;
       oCapturedPayloads = new Set();
-      iDuplicateScans = 0;
+      if (!bResumeQrf1) iDuplicateScans = 0;
       sMergeFilename = '';
       bMergeCapture = true;
       // A QR already in the preview can become the first chunk immediately.
       resetCameraDetection();
-      setMergeStatus('Recording unique QR chunks. A code already captured will be skipped.');
+      if (captureProtocol.value === 'qrf1') {
+        setMergeStatus(bResumeQrf1 ?
+          'Resumed QRmulti transfer ' + oQrfTransfer.id + '. Scan the missing parts.' :
+          'QRmulti QRF1 capture started. Scan with the camera or load QR images in any order.');
+        setInflateStatus('QRF1 compressed chunks will be assembled by index, CRC32-verified, then automatically inflated.');
+      } else {
+        setMergeStatus('Recording unique QR chunks. A code already captured will be skipped.');
+      }
     } else {
       bMergeCapture = false;
       prepareDownload();
-      if (aMergePayloads.length) {
+      if (captureProtocol.value === 'qrf1') {
+        // QRF1 reconstruction emits detailed completion or missing-part feedback above.
+      } else if (aMergePayloads.length) {
         setMergeStatus('Capture finished: ' + aMergePayloads.length +
           (aMergePayloads.length === 1 ? ' unique chunk' : ' unique chunks') +
           ', ' + iDuplicateScans + (iDuplicateScans === 1 ? ' duplicate skipped. ' : ' duplicates skipped. ') +
@@ -583,21 +844,183 @@ var __Html5QrcodeLibrary__;(()=>{var t={449:function(t,e,r){!function(t){"use st
     updateControls();
   }
 
+  // Adaptive QR scanner: the bundled ZXing decoder is very sensitive to source
+  // raster dimensions. A dense QRmulti image may decode at ~200 pixels but not
+  // at ~800 pixels. Scan multiple sizes rather than relying on ONE fixed qrbox.
+  // This uses the QR decoder already bundled in html5-qrcode; no network access.
+  let oVideoStream = null;
+  let oVideoElement = null;
+  let oNativeBarcodeDetector = null;
+  let bNativeDetectorChecked = false;
+  let iScanEpoch = 0;
+  let iScanTimer = null;
+  let iScanRound = 0;
+  let sImagePreviewUrl = null;
+  const oScanCanvas = document.createElement('canvas');
+  const oScanContext = oScanCanvas.getContext('2d', { willReadFrequently: true });
+  const oScanQuality = el('scan-quality');
+  const oDecoderStatus = el('decoder-status');
+  const oReaderHost = el('qr-reader');
+  const CAMERA_SCAN_INTERVAL_MS = 110;
+
+  function setDecoderStatus(message) {
+    if (oDecoderStatus) oDecoderStatus.textContent = message;
+  }
+
+  async function getNativeDetector() {
+    if (bNativeDetectorChecked) return oNativeBarcodeDetector;
+    bNativeDetectorChecked = true;
+    try {
+      if (typeof window.BarcodeDetector !== 'function') return null;
+      if (typeof window.BarcodeDetector.getSupportedFormats === 'function') {
+        const supported = await window.BarcodeDetector.getSupportedFormats();
+        if (Array.isArray(supported) && !supported.includes('qr_code')) return null;
+      }
+      oNativeBarcodeDetector = new window.BarcodeDetector({ formats: ['qr_code'] });
+    } catch (error) {
+      console.debug('Native QR detection not available, using embedded decoder:', error);
+      oNativeBarcodeDetector = null;
+    }
+    return oNativeBarcodeDetector;
+  }
+
+  async function detectNative(source) {
+    const detector = await getNativeDetector();
+    if (!detector) return null;
+    try {
+      const codes = await detector.detect(source);
+      for (const code of codes) {
+        if (typeof code.rawValue === 'string') return code.rawValue;
+      }
+    } catch (error) {
+      // Some browsers expose BarcodeDetector but cannot detect from a video source.
+      // Fall back to the embedded decoder without disrupting scanning.
+      console.debug('Native QR detection failed; using embedded decoder:', error);
+      oNativeBarcodeDetector = null;
+      bNativeDetectorChecked = true;
+    }
+    return null;
+  }
+
+  async function decodeScaled(source, sourceWidth, sourceHeight, width, cropFraction = 1, invert = false) {
+    if (!sourceWidth || !sourceHeight) return null;
+    const cropWidth = Math.max(1, Math.floor(sourceWidth * cropFraction));
+    const cropHeight = Math.max(1, Math.floor(sourceHeight * cropFraction));
+    const sx = Math.floor((sourceWidth - cropWidth) / 2);
+    const sy = Math.floor((sourceHeight - cropHeight) / 2);
+    const canvasWidth = Math.min(width, Math.max(64, Math.round(cropWidth * 2)));
+    const canvasHeight = Math.max(64, Math.round(canvasWidth * cropHeight / cropWidth));
+    oScanCanvas.width = canvasWidth;
+    oScanCanvas.height = canvasHeight;
+    oScanContext.drawImage(source, sx, sy, cropWidth, cropHeight, 0, 0, canvasWidth, canvasHeight);
+    if (invert) {
+      const image = oScanContext.getImageData(0, 0, canvasWidth, canvasHeight);
+      for (let i = 0; i < image.data.length; i += 4) {
+        image.data[i] = 255 - image.data[i];
+        image.data[i + 1] = 255 - image.data[i + 1];
+        image.data[i + 2] = 255 - image.data[i + 2];
+      }
+      oScanContext.putImageData(image, 0, 0);
+    }
+    try {
+      // decodeAsync is the bundled library's own decoder, not a separate CDN.
+      const result = await oReader.qrcode.decodeAsync(oScanCanvas);
+      return typeof result?.text === 'string' ? result.text : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  async function decodeImageOrFrame(source, sourceWidth, sourceHeight, mode, round = 0) {
+    const native = await detectNative(source);
+    if (native !== null) return { text: native, backend: 'Native BarcodeDetector' };
+
+    // Full-frame passes preserve off-centre QR codes; centre crops improve the
+    // effective resolution of a smaller code. Sizes intentionally overlap.
+    const profiles = {
+      fast:   [[260, 1], [400, 1], [320, .70]],
+      auto:   [[200, 1], [270, 1], [330, 1], [440, 1],
+               [300, .72], [610, 1], [470, .62], [800, 1]],
+      dense:  [[180, 1], [240, 1], [280, 1], [340, 1],
+               [420, 1], [300, .72], [480, .72], [600, 1],
+               [700, .55], [900, 1], [1100, .55]]
+    };
+    const quality = oScanQuality ? oScanQuality.value : 'auto';
+    const profile = profiles[quality] || profiles.auto;
+    const imageMode = mode === 'image';
+    // Live video: use 2-3 different resolutions per cycle, rotate the rest.
+    // Image files: try every profile until one succeeds.
+    const start = imageMode ? 0 : (round * 3) % profile.length;
+    const attempts = imageMode ? profile.length : Math.min(3, profile.length);
+    for (let i = 0; i < attempts; i++) {
+      const [width, crop] = profile[(start + i) % profile.length];
+      const result = await decodeScaled(source, sourceWidth, sourceHeight, width, crop);
+      if (result !== null) return { text: result, backend: 'Adaptive ZXing (' + width + 'px)' };
+    }
+    if (imageMode) {
+      // Negative/white-on-black QR images occasionally need explicit inversion.
+      for (const width of [260, 440, 680]) {
+        const result = await decodeScaled(source, sourceWidth, sourceHeight, width, 1, true);
+        if (result !== null) return { text: result, backend: 'Adaptive ZXing (inverted)' };
+      }
+    }
+    return null;
+  }
+
+  function scheduleNextFrame(epoch) {
+    if (!bScanning || epoch !== iScanEpoch) return;
+    iScanTimer = window.setTimeout(() => {
+      iScanTimer = null;
+      scanCameraFrame(epoch).catch(error => {
+        console.debug('Recoverable camera scan error:', error);
+        onCameraFrameWithoutQr();
+        scheduleNextFrame(epoch);
+      });
+    }, CAMERA_SCAN_INTERVAL_MS);
+  }
+
+  async function scanCameraFrame(epoch) {
+    if (!bScanning || epoch !== iScanEpoch || !oVideoElement) return;
+    if (oVideoElement.readyState < HTMLMediaElement.HAVE_CURRENT_DATA ||
+        !oVideoElement.videoWidth || !oVideoElement.videoHeight) {
+      scheduleNextFrame(epoch);
+      return;
+    }
+    const result = await decodeImageOrFrame(oVideoElement,
+      oVideoElement.videoWidth, oVideoElement.videoHeight, 'camera', iScanRound++);
+    if (!bScanning || epoch !== iScanEpoch) return;
+    if (result !== null) {
+      setDecoderStatus('Decoder: ' + result.backend);
+      onCameraScanSuccess(result.text);
+    } else {
+      onCameraFrameWithoutQr();
+    }
+    scheduleNextFrame(epoch);
+  }
+
   async function refreshCameraList() {
     try {
-      const cameras = await Html5Qrcode.getCameras();
-      if (!Array.isArray(cameras)) return;
+      if (!navigator.mediaDevices?.enumerateDevices) return;
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const cameras = devices.filter(device => device.kind === 'videoinput');
       const oldSelection = cameraSelect.value;
       cameraSelect.replaceChildren(new Option('Automatic (prefer rear camera)', ''));
       for (const camera of cameras) {
-        cameraSelect.add(new Option(camera.label || 'Camera ' + cameraSelect.length, camera.id));
+        if (camera.deviceId) cameraSelect.add(new Option(camera.label || 'Camera ' + cameraSelect.length, camera.deviceId));
       }
-      if (Array.from(cameraSelect.options).some((opt) => opt.value === oldSelection)) {
-        cameraSelect.value = oldSelection;
-      }
-    } catch (_) {
-      // Camera enumeration is optional; automatic selection still works.
+      if (Array.from(cameraSelect.options).some(opt => opt.value === oldSelection)) cameraSelect.value = oldSelection;
+    } catch (error) {
+      console.debug('Unable to enumerate cameras:', error);
     }
+  }
+
+  function removeCameraPreview() {
+    if (sImagePreviewUrl) {
+      URL.revokeObjectURL(sImagePreviewUrl);
+      sImagePreviewUrl = null;
+    }
+    oReaderHost.replaceChildren();
+    oVideoElement = null;
   }
 
   async function startCamera() {
@@ -613,19 +1036,39 @@ var __Html5QrcodeLibrary__;(()=>{var t={449:function(t,e,r){!function(t){"use st
     updateControls();
     setStatus('Requesting camera access…');
     try {
-      const camera = cameraSelect.value || { facingMode: 'environment' };
-      await oReader.start(camera, {
-        fps: 10,
-        qrbox: (width, height) => {
-          const size = Math.max(70, Math.min(280, Math.floor(Math.min(width, height) * 0.75)));
-          return { width: size, height: size };
-        }
-      }, onCameraScanSuccess, onCameraFrameWithoutQr);
+      removeCameraPreview();
+      const source = cameraSelect.value
+        ? { deviceId: { exact: cameraSelect.value } }
+        : { facingMode: { ideal: 'environment' } };
+      oVideoStream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: { ...source, width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 } }
+      });
+      const video = document.createElement('video');
+      video.autoplay = true;
+      video.muted = true;
+      video.playsInline = true;
+      video.setAttribute('playsinline', '');
+      video.setAttribute('aria-label', 'Live camera video for QR capture');
+      video.srcObject = oVideoStream;
+      oReaderHost.replaceChildren(video);
+      oVideoElement = video;
+      await video.play();
       bScanning = true;
-      setStatus('Camera active. Hold a QR code inside the highlighted square.');
+      iScanRound = 0;
+      const epoch = ++iScanEpoch;
+      scheduleNextFrame(epoch);
+      setStatus('Camera active. Keep the entire QR visible and hold it steady. Scanning at multiple resolutions.');
+      setDecoderStatus('Decoder: Adaptive ZXing' + (oNativeBarcodeDetector ? ' + native' : ''));
       await refreshCameraList();
     } catch (error) {
       bScanning = false;
+      ++iScanEpoch;
+      if (oVideoStream) {
+        oVideoStream.getTracks().forEach(track => track.stop());
+        oVideoStream = null;
+      }
+      removeCameraPreview();
       setStatus(describeError(error), 'error');
     } finally {
       bBusy = false;
@@ -634,9 +1077,16 @@ var __Html5QrcodeLibrary__;(()=>{var t={449:function(t,e,r){!function(t){"use st
   }
 
   async function stopCamera(showStoppedStatus = true) {
-    if (!bScanning) return;
-    await oReader.stop();
+    if (!bScanning && !oVideoStream) return;
     bScanning = false;
+    ++iScanEpoch;
+    if (iScanTimer !== null) clearTimeout(iScanTimer);
+    iScanTimer = null;
+    if (oVideoStream) {
+      oVideoStream.getTracks().forEach(track => track.stop());
+      oVideoStream = null;
+    }
+    removeCameraPreview();
     resetCameraDetection();
     if (showStoppedStatus) {
       setStatus('Camera stopped. You can start it again.');
@@ -645,6 +1095,31 @@ var __Html5QrcodeLibrary__;(()=>{var t={449:function(t,e,r){!function(t){"use st
       }
     }
     updateControls();
+  }
+
+  async function scanImageFile(file) {
+    if (!file.type.startsWith('image/')) throw new Error('Select a supported image file.');
+    const blobUrl = URL.createObjectURL(file);
+    const image = new Image();
+    image.alt = 'Imported QR image preview';
+    image.style.width = '100%';
+    image.style.height = 'auto';
+    image.style.maxHeight = '440px';
+    image.style.objectFit = 'contain';
+    image.src = blobUrl;
+    try {
+      await image.decode();
+      const result = await decodeImageOrFrame(image, image.naturalWidth, image.naturalHeight, 'image');
+      if (!result) throw new Error('No QR could be decoded, even after trying multiple resolutions.');
+      if (sImagePreviewUrl) URL.revokeObjectURL(sImagePreviewUrl);
+      sImagePreviewUrl = blobUrl;
+      oReaderHost.replaceChildren(image);
+      setDecoderStatus('Decoder: ' + result.backend);
+      return result.text;
+    } catch (error) {
+      URL.revokeObjectURL(blobUrl);
+      throw error;
+    }
   }
 
   startButton.addEventListener('click', startCamera);
@@ -672,7 +1147,48 @@ var __Html5QrcodeLibrary__;(()=>{var t={449:function(t,e,r){!function(t){"use st
     if (beepToggle.checked) armBeep();
   });
   mergeButton.addEventListener('click', toggleMergeCapture);
+  importFrames.addEventListener('click', () => {
+    if (bBusy || !bMergeCapture || captureProtocol.value !== 'qrf1') return;
+    const lines = manualFrames.value.split(/\r?\n/).map(line => line.trim())
+      .filter(line => line.length && !line.startsWith('#'));
+    if (!lines.length) { setMergeStatus('Paste at least one QRF1 payload line first.'); return; }
+    armBeep();
+    for (const payload of lines) recordDecodedText(payload, 'manual');
+  });
+  resetCaptureButton.addEventListener('click', () => {
+    if (bBusy || bMergeCapture) return;
+    discardDownload();
+    aMergePayloads = [];
+    oCapturedPayloads = new Set();
+    oQrfTransfer = null;
+    iDuplicateScans = 0;
+    sMergeFilename = '';
+    transferSummary.hidden = true;
+    resetCameraDetection();
+    setMergeStatus('Capture buffer cleared. Ready to begin a new transfer.');
+    setInflateStatus(captureProtocol.value === 'qrf1' ?
+      'QRF1 mode automatically inflates and validates the original file.' :
+      'Plain mode: optionally enable inflate before download.');
+    updateControls();
+  });
   inflateButton.addEventListener('click', toggleInflate);
+  captureProtocol.addEventListener('change', () => {
+    // A new capture protocol starts with an empty buffer; mixing framed and plain data is unsafe.
+    discardDownload();
+    aMergePayloads = [];
+    oCapturedPayloads = new Set();
+    oQrfTransfer = null;
+    iDuplicateScans = 0;
+    transferSummary.hidden = true;
+    sMergeFilename = '';
+    setMergeStatus(captureProtocol.value === 'qrf1' ?
+      'QRmulti mode: scan QRF1 parts in any order. Chunks are validated and restored as the original file.' :
+      'Plain mode: collect unique QR fragments in scan order. Start a new merge session.');
+    setInflateStatus(captureProtocol.value === 'qrf1' ?
+      'QRF1 automatically reconstructs the indexed binary stream and inflates it; manual inflate is unnecessary.' :
+      'Plain mode: optionally enable inflate before download.');
+    updateControls();
+  });
   mergeFormat.addEventListener('change', () => {
     if (!bMergeCapture && aMergePayloads.length) prepareDownload();
   });
@@ -710,15 +1226,14 @@ var __Html5QrcodeLibrary__;(()=>{var t={449:function(t,e,r){!function(t){"use st
       if (bScanning) await stopCamera(false);
       bShowingImage = true;
       updateControls();
-      const text = await oReader.scanFile(file, true);
-      // Merge capture deliberately includes camera events only.
+      const text = await scanImageFile(file);
       recordDecodedText(text, 'image');
-      if (bMergeCapture) {
-        setMergeStatus('Capture paused. Image scans are not added to the camera merge.');
+      if (bMergeCapture && captureProtocol.value === 'plain') {
+        setMergeStatus('Capture paused. Plain mode does not add image scans to the camera merge.');
       }
     } catch (error) {
       bShowingImage = false;
-      setStatus('No QR code could be decoded from this image. Try a clearer picture.', 'error');
+      setStatus('No QR code could be decoded from this image: ' + (error.message || error), 'error');
     } finally {
       imageFile.value = '';
       bBusy = false;
@@ -727,7 +1242,9 @@ var __Html5QrcodeLibrary__;(()=>{var t={449:function(t,e,r){!function(t){"use st
   });
 
   window.addEventListener('pagehide', () => {
-    if (bScanning) oReader.stop().catch(() => {});
+    if (oVideoStream) oVideoStream.getTracks().forEach(track => track.stop());
+    if (sImagePreviewUrl) URL.revokeObjectURL(sImagePreviewUrl);
+    if (iScanTimer !== null) clearTimeout(iScanTimer);
     discardDownload();
     if (oAudioContext && oAudioContext.state !== 'closed') oAudioContext.close().catch(() => {});
   });
