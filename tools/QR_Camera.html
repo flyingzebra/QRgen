@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
-  <title>Offline QR Code Camera Reader</title>
+  <title>QRmulti QR Code Reader — ZBar WASM</title>
   <style>
     :root { color-scheme: light; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
     * { box-sizing: border-box; }
@@ -78,7 +78,7 @@
 <body>
 <main>
   <h1>QR Code Reader</h1>
-  <p class="subtitle">Scan QRmulti sequences with adaptive resolution scanning. All decoding runs locally, without an internet connection.</p>
+  <p class="subtitle">Scan QRmulti sequences with ZBar WebAssembly first, then native and ZXing fallbacks. Decoding stays on your device. To use ZBar fully offline, save an offline copy after the initial library download.</p>
 
   <section class="panel" aria-label="Camera scanner">
     <div id="reader-shell">
@@ -139,7 +139,7 @@
         <option value="dense">Dense QR (more resolution attempts)</option>
       </select>
     </div>
-    <p class="small" id="decoder-status" aria-live="polite">Decoder: Adaptive ZXing (offline)</p>
+    <p class="small" id="decoder-status" aria-live="polite">Decoder: ZBar WASM preferred · ZXing fallback (offline)</p>
     <p id="scanner-status" class="status" role="status" aria-live="polite">Ready. Select Start camera and allow camera access.</p>
   </section>
 
@@ -160,6 +160,17 @@
     <p class="small">Selecting an image stops the camera while it is scanned. In QRmulti mode, image scans can also add QRF1 chunks to an active capture, even without a running camera. Plain mode retains camera-only merge capture.</p>
   </section>
 
+  <section class="panel" aria-label="ZBar WebAssembly packaging">
+    <h2>ZBar WASM — offline packaging</h2>
+    <p class="small">ZBar WASM is the preferred decoder. This bootstrap edition loads the inlined WASM build on first use; the current ZXing fallback remains built in. While online, save a <strong>fully offline standalone HTML copy</strong> for future use without any network requests. Alternatively provide the official <code>dist/inlined/index.js</code> file manually.</p>
+    <div class="controls">
+      <button class="button primary" id="make-offline" type="button">Save fully offline HTML</button>
+      <label class="checkbox-label" for="zbar-vendor-file">Or select ZBar inlined index.js:</label>
+      <input type="file" id="zbar-vendor-file" accept=".js,text/javascript,application/javascript" aria-label="Optional local ZBar inlined JavaScript library">
+    </div>
+    <p class="small" id="zbar-packaging-status" aria-live="polite">The downloaded standalone copy embeds the WASM decoder and needs no CDN.</p>
+    <p class="small">ZBar WASM by undecaf and contributors (LGPL-2.1): <a href="https://github.com/undecaf/zbar-wasm" target="_blank" rel="noopener noreferrer">source and license</a>. Version 0.11.0. ZBar is WebAssembly, not a native browser plug-in.</p>
+  </section>
   <p class="small"><strong>QRmulti / QRF1 mode</strong> reconstructs the original file regardless of scan order, checks the complete compressed byte count and CRC32, decompresses it with embedded Pako, verifies the original byte count, and preserves the original filename. A download is available only when every part passes validation. Use <strong>Plain QR fragments</strong> for the previous unstructured merge behavior. Very dense QR codes may require a closer, sharply focused camera image; lower QR TypeNumbers are generally easier to scan.</p>
   <p class="small">For plain QR fragments, with <strong>Inflate before download</strong> enabled, merged QR text is concatenated, decoded as Base64/hexadecimal when detected, and decompressed using embedded Pako (zlib, gzip, or raw DEFLATE). Output is a binary <code>.bin</code> file. Uncompressed input is exported as original bytes; invalid compressed streams are reported instead of silently changed. For lossless transport of arbitrary binary data, encode the compressed stream as Base64 or hexadecimal <em>before</em> making QR codes.</p>
   <p class="small">Camera access depends on your browser's security rules. Most browsers permit it on HTTPS or localhost; some also permit locally opened HTML files (file://). If camera access is unavailable, the image-scanning option still works. Scanned links are never opened automatically.</p>
@@ -847,7 +858,7 @@ var __Html5QrcodeLibrary__;(()=>{var t={449:function(t,e,r){!function(t){"use st
   // Adaptive QR scanner: the bundled ZXing decoder is very sensitive to source
   // raster dimensions. A dense QRmulti image may decode at ~200 pixels but not
   // at ~800 pixels. Scan multiple sizes rather than relying on ONE fixed qrbox.
-  // This uses the QR decoder already bundled in html5-qrcode; no network access.
+  // ZBar WASM is the preferred decoder; ZXing remains embedded as offline fallback.
   let oVideoStream = null;
   let oVideoElement = null;
   let oNativeBarcodeDetector = null;
@@ -862,6 +873,66 @@ var __Html5QrcodeLibrary__;(()=>{var t={449:function(t,e,r){!function(t){"use st
   const oDecoderStatus = el('decoder-status');
   const oReaderHost = el('qr-reader');
   const CAMERA_SCAN_INTERVAL_MS = 110;
+  const ZBAR_INLINED_URL = 'https://cdn.jsdelivr.net/npm/@undecaf/zbar-wasm@0.11.0/dist/inlined/index.js';
+  let pZBarLoad = null;
+  let sZBarError = '';
+  let bLoggedZBarFailure = false;
+
+  // In the exported offline edition, the ZBar inline vendor script is loaded
+  // before this application code. Otherwise fetch it on first use from CDN.
+  async function loadZBarWasm() {
+    if (typeof window.zbarWasm?.scanImageData === 'function') return true;
+    if (pZBarLoad) return pZBarLoad;
+    pZBarLoad = new Promise(resolve => {
+      const script = document.createElement('script');
+      script.id = 'zbar-runtime-loader';
+      script.src = ZBAR_INLINED_URL;
+      script.async = true;
+      script.onload = () => {
+        const ok = typeof window.zbarWasm?.scanImageData === 'function';
+        if (!ok) sZBarError = 'ZBar library loaded but did not expose scanImageData().';
+        setDecoderStatus(ok ? 'Decoder ready: ZBar WebAssembly (primary)' : 'Decoder: embedded ZXing fallback');
+        resolve(ok);
+      };
+      script.onerror = () => {
+        sZBarError = 'Could not load ZBar WASM from the CDN. The offline ZXing fallback remains usable.';
+        setDecoderStatus('Decoder: embedded ZXing fallback — ZBar unavailable');
+        script.remove();
+        resolve(false);
+      };
+      document.head.appendChild(script);
+    });
+    return pZBarLoad;
+  }
+
+  // Give the preferred decoder the full camera resolution, capped only to
+  // avoid huge image buffers. Never force centre cropping before ZBar sees it.
+  async function detectZBar(source, width, height) {
+    if (typeof window.zbarWasm?.scanImageData !== 'function') return null;
+    if (!width || !height) return null;
+    const scale = Math.min(1, 2304 / Math.max(width, height));
+    const w = Math.max(1, Math.round(width * scale));
+    const h = Math.max(1, Math.round(height * scale));
+    oScanCanvas.width = w;
+    oScanCanvas.height = h;
+    oScanContext.drawImage(source, 0, 0, width, height, 0, 0, w, h);
+    try {
+      const symbols = await window.zbarWasm.scanImageData(
+        oScanContext.getImageData(0, 0, w, h));
+      for (const symbol of symbols || []) {
+        if (!/qr/i.test(symbol.typeName || 'QR-Code')) continue;
+        const result = symbol.decode('utf-8');
+        if (typeof result === 'string' && result.length) return result;
+      }
+    } catch (error) {
+      if (!bLoggedZBarFailure) {
+        bLoggedZBarFailure = true;
+        console.warn('ZBar WASM decode failed, using fallback decoders:', error);
+      }
+    }
+    return null;
+  }
+
 
   function setDecoderStatus(message) {
     if (oDecoderStatus) oDecoderStatus.textContent = message;
@@ -932,6 +1003,11 @@ var __Html5QrcodeLibrary__;(()=>{var t={449:function(t,e,r){!function(t){"use st
   }
 
   async function decodeImageOrFrame(source, sourceWidth, sourceHeight, mode, round = 0) {
+    // Image uploads can wait for the initial WASM library load. Camera frames
+    // never block on the network: use ZXing until ZBar becomes available.
+    if (mode === 'image') await loadZBarWasm();
+    const zbar = await detectZBar(source, sourceWidth, sourceHeight);
+    if (zbar !== null) return { text: zbar, backend: 'ZBar WebAssembly (full frame)' };
     const native = await detectNative(source);
     if (native !== null) return { text: native, backend: 'Native BarcodeDetector' };
 
@@ -1035,6 +1111,7 @@ var __Html5QrcodeLibrary__;(()=>{var t={449:function(t,e,r){!function(t){"use st
     resetCameraDetection();
     updateControls();
     setStatus('Requesting camera access…');
+    void loadZBarWasm();
     try {
       removeCameraPreview();
       const source = cameraSelect.value
@@ -1059,7 +1136,7 @@ var __Html5QrcodeLibrary__;(()=>{var t={449:function(t,e,r){!function(t){"use st
       const epoch = ++iScanEpoch;
       scheduleNextFrame(epoch);
       setStatus('Camera active. Keep the entire QR visible and hold it steady. Scanning at multiple resolutions.');
-      setDecoderStatus('Decoder: Adaptive ZXing' + (oNativeBarcodeDetector ? ' + native' : ''));
+      setDecoderStatus(typeof window.zbarWasm?.scanImageData === 'function' ? 'Decoder: ZBar WebAssembly (primary)' : 'Decoder: ZXing fallback while ZBar loads');
       await refreshCameraList();
     } catch (error) {
       bScanning = false;
@@ -1110,7 +1187,7 @@ var __Html5QrcodeLibrary__;(()=>{var t={449:function(t,e,r){!function(t){"use st
     try {
       await image.decode();
       const result = await decodeImageOrFrame(image, image.naturalWidth, image.naturalHeight, 'image');
-      if (!result) throw new Error('No QR could be decoded, even after trying multiple resolutions.');
+      if (!result) throw new Error('No QR could be decoded by ZBar, native detection, or adaptive ZXing. ' + (sZBarError || ''));
       if (sImagePreviewUrl) URL.revokeObjectURL(sImagePreviewUrl);
       sImagePreviewUrl = blobUrl;
       oReaderHost.replaceChildren(image);
@@ -1120,6 +1197,83 @@ var __Html5QrcodeLibrary__;(()=>{var t={449:function(t,e,r){!function(t){"use st
       URL.revokeObjectURL(blobUrl);
       throw error;
     }
+  }
+
+  // The WASM vendor bundle is ~334 KB and already contains its own WASM bytes.
+  // Build a fresh single-file document from DOM without requiring Node/Python.
+  async function buildOfflineCopy() {
+    const button = document.getElementById('make-offline');
+    const status = document.getElementById('zbar-packaging-status');
+    const file = document.getElementById('zbar-vendor-file')?.files?.[0];
+    button.disabled = true;
+    status.textContent = 'Obtaining the ZBar inlined WebAssembly library…';
+    try {
+      let source;
+      if (file) {
+        source = await file.text();
+      } else {
+        const response = await fetch(ZBAR_INLINED_URL, { mode: 'cors', cache: 'force-cache' });
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        source = await response.text();
+      }
+      if (!/scanImageData/.test(source) || !/zbarWasm/.test(source) || source.length < 50000) {
+        throw new Error('This is not the expected official inlined ZBar WASM JavaScript bundle.');
+      }
+      const clone = document.documentElement.cloneNode(true);
+      // Strip any dynamically appended CDN script. It must not be included.
+      clone.querySelectorAll('#zbar-runtime-loader,#zbar-inlined-vendor').forEach(e => e.remove());
+      const vendor = document.createElement('script');
+      vendor.id = 'zbar-inlined-vendor';
+      vendor.textContent = source.replace(/<\/script/gi, '<\\/script');
+      clone.querySelector('head').appendChild(vendor);
+      clone.querySelector('#qr-reader').replaceChildren();
+      const empty = clone.querySelector('#empty-preview');
+      if (empty) empty.hidden = false;
+      for (const id of ['start-button', 'merge-button', 'reset-capture', 'stop-button']) {
+        const el = clone.querySelector('#' + id);
+        if (el) el.disabled = id !== 'start-button';
+      }
+      const imgInput = clone.querySelector('#image-file');
+      if (imgInput) imgInput.value = '';
+      const fileInput = clone.querySelector('#zbar-vendor-file');
+      if (fileInput) fileInput.value = '';
+      // Reset any visible capture metadata in the saved document.
+      const statusNode = clone.querySelector('#scanner-status');
+      if (statusNode) statusNode.textContent = 'Ready. ZBar WASM is embedded locally.';
+      const decodeStatus = clone.querySelector('#decoder-status');
+      if (decodeStatus) decodeStatus.textContent = 'Decoder: ZBar WASM (embedded, offline)';
+      const offlineNode = clone.querySelector('#zbar-packaging-status');
+      if (offlineNode) offlineNode.textContent = 'This file contains embedded ZBar WASM and works without a network.';
+      const embedded = document.createElement('meta');
+      embedded.name = 'zbar-wasm-embedded';
+      embedded.content = '0.11.0';
+      clone.querySelector('head').appendChild(embedded);
+      const html = '<!DOCTYPE html>\n' + clone.outerHTML;
+      const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'QR_Camera_ZBar_WASM_Offline.html';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 3000);
+      status.textContent = 'Offline HTML generated with embedded ZBar WASM. Use the downloaded file for future offline scans.';
+    } catch (error) {
+      console.error('Could not create offline edition:', error);
+      status.textContent = 'Unable to build offline HTML: ' + (error.message || error) +
+        '. Download dist/inlined/index.js from @undecaf/zbar-wasm 0.11.0 and select it above, then retry.';
+    } finally {
+      button.disabled = false;
+    }
+  }
+  document.getElementById('make-offline').addEventListener('click', buildOfflineCopy);
+  // Load eagerly only if user already bundled the WASM library; otherwise start
+  // loading in background to make the camera startup more responsive.
+  if (typeof window.zbarWasm?.scanImageData === 'function') {
+    setDecoderStatus('Decoder: ZBar WASM (embedded, offline)');
+  } else {
+    setDecoderStatus('Decoder: ZXing offline fallback — ZBar loads on first scan');
   }
 
   startButton.addEventListener('click', startCamera);
