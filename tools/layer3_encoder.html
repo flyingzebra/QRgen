@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QRgen Lab — Layer 3: Reed–Solomon Error Correction</title>
+<style>
+:root {color-scheme:light;--ink:#152236;--muted:#52627b;--line:#d7e0ed;--soft:#f2f6fb;--blue:#265fc4;--good:#14663d;--warn:#965200;--bad:#ae2332;--green:#1b8457;--red:#cb5b66;--purple:#714eb0}
+* {box-sizing:border-box}
+body {margin:0;background:#eef3fa;color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+header {background:linear-gradient(115deg,#172b52,#254f92);color:#fff;padding:24px max(22px,calc((100% - 1260px)/2));box-shadow:0 3px 14px #182b4a25}
+header h1{font-size:clamp(24px,3vw,34px);line-height:1.18;margin:5px 0 10px}
+header p{margin:0;color:#e5efff;max-width:1030px}.eyebrow{font-weight:750;color:#b9ddff;letter-spacing:.08em;text-transform:uppercase;font-size:12px}
+main{max-width:1304px;margin:22px auto 50px;padding:0 20px}
+a{color:var(--blue)}.panel{background:white;border:1px solid var(--line);border-radius:12px;padding:20px;margin-bottom:17px;box-shadow:0 2px 7px #20385409}.panel h2{font-size:18px;margin:0 0 13px}
+.split{display:grid;grid-template-columns:minmax(320px,1.2fr) minmax(290px,1fr);gap:17px}
+.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+label{font-weight:700;display:block;margin:0 0 6px}
+select,textarea,button,input{font:inherit}
+select,textarea{border:1px solid #aebed3;border-radius:7px;padding:10px 11px;color:var(--ink);background:white;width:100%}
+textarea{resize:vertical;min-height:125px;font:12px/1.55 ui-monospace,Consolas,monospace}
+textarea:focus,select:focus,button:focus-visible{outline:3px solid #8bb9ff;outline-offset:1px}
+.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:11px}
+button,.file-label{cursor:pointer;border:1px solid #bdcbe0;border-radius:7px;padding:8px 12px;color:#214779;background:#f6f9ff;font-size:13px;font-weight:650}
+button:hover:not(:disabled){background:#e6efff}button.primary{background:#245fbd;color:white;border-color:#245fbd}button.primary:hover{background:#164d9d}button:disabled{opacity:.45;cursor:not-allowed}
+.hint{font-size:12px;color:var(--muted);margin:5px 0 10px}.small{font-size:13px;color:var(--muted)}.hidden{display:none!important}
+.status{padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--soft);margin:10px 0 14px}
+.status.good{background:#ecfaf1;border-color:#a5dac0;color:var(--good)}.status.error{background:#fff1f2;border-color:#f0bec5;color:var(--bad)}
+.stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+.stat{border:1px solid var(--line);border-radius:8px;background:#f8fbff;padding:10px;min-width:0}
+.stat .value{display:block;font-weight:760;font-size:21px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.stat .name{color:var(--muted);font-size:12px}
+.pipeline{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:14px 0}
+.step{padding:12px;border-radius:8px;border:1px solid #bacbeb;background:#e7efff;min-width:0;position:relative}
+.step:nth-child(even){background:#e9f7ee;border-color:#bfdfc9}
+.step strong{display:block;font-size:13px}.step small{font-size:11px;color:var(--muted)}
+.step:not(:last-child)::after{content:'→';position:absolute;right:-10px;top:33%;font-weight:800;z-index:2;color:#536886;background:#fff;border-radius:999px;padding:0 2px}
+.meter{height:17px;background:#edf2f8;display:flex;overflow:hidden;border-radius:8px;margin:9px 0}
+.meter .data{background:#3d7cca}.meter .ecc{background:#39a777}
+.legend{display:flex;gap:18px;flex-wrap:wrap;font-size:12px}.swatch{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:5px;vertical-align:middle}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;min-width:810px;width:100%;font-size:13px}th,td{border-bottom:1px solid #e6edf5;text-align:left;vertical-align:top;padding:9px 10px}th{position:sticky;top:0;background:#f2f6fd;font-size:12px;white-space:nowrap}tr:last-child td{border-bottom:0}
+.mono,pre,code{font-family:ui-monospace,SFMono-Regular,Consolas,Monaco,monospace;font-size:12px;overflow-wrap:anywhere}
+.code{background:#f6f9ff;border:1px solid var(--line);border-radius:8px;padding:12px;white-space:pre-wrap;overflow-wrap:anywhere;max-height:220px;overflow:auto}
+.tag{font-size:11px;font-weight:700;color:#265fc4;background:#e6effe;border-radius:4px;padding:3px 6px;display:inline-block}.tag.long{color:#20764d;background:#e0f7e9}
+.output{min-height:140px;max-height:330px;background:#f8fbff}
+.tests{font:12px/1.65 ui-monospace,Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere;max-height:330px;overflow:auto}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}.footnote{font-size:12px;color:var(--muted);margin:12px 0 0}
+@media(max-width:920px){.split,.two{grid-template-columns:1fr}.stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:560px){.pipeline{grid-template-columns:repeat(2,minmax(0,1fr))}.stats,.fields{grid-template-columns:repeat(2,minmax(0,1fr))}main{padding:0 10px}.panel{padding:14px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">QRgen Lab · Layer 3 / 8</div>
+  <h1>Reed–Solomon error correction and interleaving</h1>
+  <p>Transform the complete Layer 2 data codewords into QR error-corrected, interleaved message bits. Explore RS blocks, parity bytes, and remainder bits. Entirely offline, in one HTML file.</p>
+</header>
+<main>
+  <div class="split">
+    <section class="panel">
+      <h2>1. Supply Layer 2 data</h2>
+      <label for="sourceKind">Input format</label>
+      <select id="sourceKind">
+        <option value="json">Layer 2 JSON (recommended)</option>
+        <option value="hex">Manual data codewords (hex)</option>
+        <option value="binary">Layer 2 data codewords (.bin)</option>
+      </select>
+      <div id="jsonGroup" style="margin-top:13px">
+        <label for="jsonFile">Import Layer 2 JSON</label>
+        <input type="file" id="jsonFile" accept=".json,application/json">
+        <p class="hint" id="jsonName">Paste the JSON export below, or choose a file.</p>
+        <textarea id="jsonInput" spellcheck="false" aria-label="Layer 2 JSON input"></textarea>
+        <div class="toolbar"><button id="jsonExample" type="button">Load HELLO WORLD (V1-M)</button><button id="v2Example" type="button">Load V2-M example</button></div>
+      </div>
+      <div id="hexGroup" class="hidden" style="margin-top:13px">
+        <label for="hexInput">Hexadecimal data codewords</label>
+        <textarea id="hexInput" spellcheck="false" placeholder="20 5B 0B 78 D1 72 DC 4D 43 40 EC 11 ..."></textarea>
+        <p class="hint">One byte per pair of hexadecimal digits. The length must match the selected version and ECC level exactly; these bytes must already include Layer 2 padding.</p>
+        <button id="hexExample" type="button">Load reference V1-M data</button>
+      </div>
+      <div id="binaryGroup" class="hidden" style="margin-top:13px">
+        <label for="binFile">Select a Layer 2 binary export</label>
+        <input id="binFile" type="file" accept=".bin,application/octet-stream">
+        <p class="hint" id="binName">The binary file contains data codewords, not an encoded QR image. Set the matching version/ECC level.</p>
+      </div>
+    </section>
+    <section class="panel">
+      <h2>2. QR configuration &amp; verification</h2>
+      <div class="fields">
+        <div><label for="version">QR version</label><select id="version"></select></div>
+        <div><label for="ecc">ECC grade</label><select id="ecc"><option>L</option><option selected>M</option><option>Q</option><option>H</option></select></div>
+      </div>
+      <p class="hint" id="configurationNote">Version defaults to 2. JSON imports supply and lock both parameters.</p>
+      <div class="pipeline" aria-label="Layer 3 processing steps">
+        <div class="step"><strong>1. Partition</strong><small>Short / long RS blocks</small></div>
+        <div class="step"><strong>2. Parity</strong><small>GF(256), polynomial 0x11D</small></div>
+        <div class="step"><strong>3. Interleave</strong><small>Data first, ECC second</small></div>
+        <div class="step"><strong>4. Remainder</strong><small>Append zero bits</small></div>
+      </div>
+      <div class="toolbar"><button class="primary" id="calculate" type="button">Calculate Layer 3</button><button id="runTests" type="button">Run regression tests</button></div>
+      <pre id="tests" class="tests" role="status"></pre>
+      <p class="footnote"><a href="layer1_encoder.html">Layer 1</a> · <a href="layer2_encoder.html">Layer 2</a> · <a href="../docs/QR_CODE_CONSTRUCTION.md">Construction guide</a> · <a href="TOOLS_CATALOG.html">Tools catalog</a></p>
+    </section>
+  </div>
+
+  <section class="panel">
+    <h2>3. Result — exact QR data + ECC capacity</h2>
+    <div class="status" id="status" role="status" aria-live="polite">Enter valid Layer 2 codewords to begin.</div>
+    <div class="stats">
+      <div class="stat"><span class="value" id="sVersion">—</span><span class="name">Version / level</span></div>
+      <div class="stat"><span class="value" id="sData">—</span><span class="name">Data codewords</span></div>
+      <div class="stat"><span class="value" id="sBlocks">—</span><span class="name">RS blocks</span></div>
+      <div class="stat"><span class="value" id="sEcc">—</span><span class="name">ECC codewords</span></div>
+      <div class="stat"><span class="value" id="sRemainder">—</span><span class="name">Remainder bits</span></div>
+    </div>
+    <div class="meter" role="img" aria-label="Number of data versus error correction codewords"><div id="meterData" class="data"></div><div id="meterEcc" class="ecc"></div></div>
+    <div class="legend"><span><span class="swatch" style="background:#3d7cca"></span>Data bytes (from Layer 2)</span><span><span class="swatch" style="background:#39a777"></span>Reed–Solomon parity bytes</span><span>Remainder bits are appended afterwards, not RS codewords.</span></div>
+  </section>
+
+  <section class="panel">
+    <h2>4. RS block partitioning</h2>
+    <p class="small" id="blockSummary">For the selected version/ECC configuration, show all short and long data blocks, with independently generated parity.</p>
+    <div class="scroll"><table><thead><tr><th>Block</th><th>Group</th><th>Data offset</th><th>Data bytes</th><th>ECC bytes</th><th>Total bytes</th><th>Correctable errors</th><th>Inspect</th></tr></thead><tbody id="blockRows"></tbody></table></div>
+    <div id="inspection" class="two" style="margin-top:15px">
+      <div><strong id="blockTitle">Select a block</strong><pre class="code" id="blockData">—</pre></div>
+      <div><strong>Generated parity (decimal / hexadecimal)</strong><pre class="code" id="blockParity">—</pre></div>
+    </div>
+    <details style="margin-top:13px"><summary><strong>RS generator polynomial for this ECC degree</strong></summary><p class="small">Generator roots are α⁰ through α⁽ᵉ⁻¹⁾ with α = 2 in GF(256). Coefficients are shown in descending degree, including the leading 1.</p><pre class="code" id="generator">—</pre></details>
+  </section>
+
+  <section class="panel">
+    <h2>5. Interleaving order</h2>
+    <p class="small">Take data byte 0 of every block, then data byte 1, and so on; longer blocks contribute one additional data byte. Then interleave parity bytes independently. No parity is calculated over the interleaved sequence.</p>
+    <div class="toolbar"><button type="button" id="prev">Previous 128</button><span id="pageInfo" class="small">—</span><button type="button" id="next">Next 128</button></div>
+    <div class="scroll" style="margin-top:10px"><table><thead><tr><th>Index</th><th>Byte (hex)</th><th>Byte (decimal)</th><th>Binary</th><th>Kind</th><th>Block</th><th>Position in block</th></tr></thead><tbody id="interleaveRows"></tbody></table></div>
+  </section>
+
+  <section class="panel">
+    <h2>6. Layer 3 output → Layer 4 / 5</h2>
+    <p class="hint">Layer 3 finishes with a complete interleaved sequence of data and ECC bytes, plus 0–7 zero remainder bits. Layer 4 reserves the function-pattern modules; Layer 5 places these bits into the matrix.</p>
+    <div class="two">
+      <div><label for="hexOutput">Interleaved data + parity (hexadecimal bytes)</label><textarea class="output" id="hexOutput" readonly spellcheck="false"></textarea></div>
+      <div><label for="bitsOutput">Final bitstream (including zero remainder bits)</label><textarea class="output" id="bitsOutput" readonly spellcheck="false"></textarea></div>
+    </div>
+    <p class="small" id="outputSummary">No output yet.</p>
+    <div class="toolbar"><button type="button" id="copyHex">Copy hex</button><button type="button" id="copyBits">Copy bits</button><button type="button" id="copyJson">Copy JSON</button><button type="button" id="downloadJson">Download Layer 3 JSON</button><button type="button" id="downloadBin">Download interleaved .bin</button></div>
+    <details style="margin-top:14px"><summary><strong>JSON contract and traceability</strong></summary>
+      <p class="hint">Exports <code>qrgen.layer3.v1</code>. Contains <code>version</code>, <code>ecc</code>, <code>blocks</code>, <code>interleavedData</code>, <code>interleavedEcc</code>, <code>interleavedCodewords</code>, <code>remainderBits</code>, and <code>finalBitstream</code>. The original Layer 2 JSON is preserved when imported, allowing later layers to trace the complete pipeline.</p>
+      <pre class="code" id="preview">—</pre>
+    </details>
+  </section>
+  <p class="footnote">This is a stand-alone browser tool with no external dependencies and no online requests. It encodes parity but does not implement RS decoding or QR matrix rendering. Follow ISO/IEC 18004 for formal conformance.</p>
+</main>
+<script>
+"use strict";
+// Classic Model 2 QR Code, Layer 3 only. Reference: docs/QR_CODE_CONSTRUCTION.md §§6–7 and Appendix B.
+// All tables and calculation functions are self-contained; no external scripts, network calls or Node.js required.
+(function () {
+  const $ = id => document.getElementById(id);
+  const ECC_LEVELS = "LMQH";
+  // Every table row represents one version, with four entries ordered L,M,Q,H.
+  // D (data codewords), B (number of blocks), E (parity bytes per block).
+  // Cross-checked with the 160 configurations in Appendix B and QR Code Model 2 reference encoders.
+  const D = `19,16,13,9;34,28,22,16;55,44,34,26;80,64,48,36;108,86,62,46;136,108,76,60;156,124,88,66;194,154,110,86;232,182,132,100;274,216,154,122;324,254,180,140;370,290,206,158;428,334,244,180;461,365,261,197;523,415,295,223;589,453,325,253;647,507,367,283;721,563,397,313;795,627,445,341;861,669,485,385;932,714,512,406;1006,782,568,442;1094,860,614,464;1174,914,664,514;1276,1000,718,538;1370,1062,754,596;1468,1128,808,628;1531,1193,871,661;1631,1267,911,701;1735,1373,985,745;1843,1455,1033,793;1955,1541,1115,845;2071,1631,1171,901;2191,1725,1231,961;2306,1812,1286,986;2434,1914,1354,1054;2566,1992,1426,1096;2702,2102,1502,1142;2812,2216,1582,1222;2956,2334,1666,1276`;
+  const B = `1,1,1,1;1,1,1,1;1,1,2,2;1,2,2,4;1,2,4,4;2,4,4,4;2,4,6,5;2,4,6,6;2,5,8,8;4,5,8,8;4,5,8,11;4,8,10,11;4,9,12,16;4,9,16,16;6,10,12,18;6,10,17,16;6,11,16,19;6,13,18,21;7,14,21,25;8,16,20,25;8,17,23,25;9,17,23,34;9,18,25,30;10,20,27,32;12,21,29,35;12,23,34,37;12,25,34,40;13,26,35,42;14,28,38,45;15,29,40,48;16,31,43,51;17,33,45,54;18,35,48,57;19,37,51,60;19,38,53,63;20,40,56,66;21,43,59,70;22,45,62,74;24,47,65,77;25,49,68,81`;
+  const E = `7,10,13,17;10,16,22,28;15,26,18,22;20,18,26,16;26,24,18,22;18,16,24,28;20,18,18,26;24,22,22,26;30,22,20,24;18,26,24,28;20,30,28,24;24,22,26,28;26,22,24,22;30,24,20,24;22,24,30,24;24,28,24,30;28,28,28,28;30,26,28,28;28,26,26,26;28,26,30,28;28,26,28,30;28,28,30,24;30,28,30,30;30,28,30,30;26,28,30,30;28,28,28,30;30,28,30,30;30,28,30,30;30,28,30,30;30,28,30,30;30,28,30,30;30,28,30,30;30,28,30,30;30,28,30,30;30,28,30,30;30,28,30,30;30,28,30,30;30,28,30,30;30,28,30,30;30,28,30,30`;
+  const rows = string => string.split(";").map(row => row.split(",").map(Number));
+  const DATA = rows(D), BLOCKS = rows(B), ECC_PER_BLOCK = rows(E);
+  const HEX = byte => byte.toString(16).toUpperCase().padStart(2,"0");
+  const validByte = value => Number.isInteger(value) && value >= 0 && value <= 255;
+  const hexString = bytes => bytes.map(HEX).join(" ");
+  function layout(version,ecc) {
+    if (!Number.isInteger(version) || version < 1 || version > 40) throw Error("QR version must be 1–40.");
+    if (typeof ecc !== "string" || !ECC_LEVELS.includes(ecc) || ecc.length !== 1) throw Error("ECC level must be L, M, Q, or H.");
+    const i = ECC_LEVELS.indexOf(ecc);
+    const dataCount = DATA[version - 1][i], blockCount = BLOCKS[version - 1][i], parityCount = ECC_PER_BLOCK[version - 1][i];
+    const rawCodewords = dataCount + blockCount * parityCount;
+    const availableModules = (16 * version + 128) * version + 64
+       - (version >= 2 ? (25 * (Math.floor(version / 7) + 2) - 10) * (Math.floor(version / 7) + 2) - 55 : 0)
+       - (version >= 7 ? 36 : 0);
+    const remainderCount = availableModules % 8;
+    if (Math.floor(availableModules / 8) !== rawCodewords) throw Error("Internal configuration table mismatch.");
+    const shortBlockCount = blockCount - rawCodewords % blockCount;
+    const shortDataLength = Math.floor(rawCodewords / blockCount) - parityCount;
+    return {version,ecc,dataCount,blockCount,parityCount,rawCodewords,availableModules,remainderCount,shortBlockCount,longBlockCount:blockCount-shortBlockCount,shortDataLength};
+  }
+  // Binary polynomial multiplication in GF(256), modulus x^8+x^4+x^3+x^2+1 (0x11D).
+  function gfMultiply(a,b) {
+    if (!validByte(a) || !validByte(b)) throw Error("GF factors must be bytes.");
+    let product = 0;
+    while (b) {
+      if (b & 1) product ^= a;
+      a = (a << 1) ^ ((a & 0x80) ? 0x11D : 0);
+      b >>>= 1;
+    }
+    return product;
+  }
+  const GENERATORS = new Map();
+  function generatorPolynomial(degree) {
+    if (!Number.isInteger(degree) || degree < 1 || degree > 30) throw Error("Invalid RS generator degree.");
+    if (GENERATORS.has(degree)) return GENERATORS.get(degree).slice();
+    let coefficients = [1], root = 1;
+    for (let i=0; i<degree; i++) {
+      const next = new Array(coefficients.length+1).fill(0);
+      for (let j=0; j<coefficients.length; j++) {
+        next[j] ^= coefficients[j];
+        next[j+1] ^= gfMultiply(coefficients[j],root);
+      }
+      coefficients = next;
+      root = gfMultiply(root,2);
+    }
+    GENERATORS.set(degree,coefficients);
+    return coefficients.slice();
+  }
+  // The divisor remainder of M(x)*x^e. All coefficients are descending-order bytes.
+  function rsParity(data,parityCount) {
+    if (!Array.isArray(data) || !data.length || !data.every(validByte)) throw Error("RS block data must be a nonempty byte array.");
+    const generator = generatorPolynomial(parityCount);
+    const remainder = new Array(parityCount).fill(0);
+    for (const byte of data) {
+      const factor = byte ^ remainder[0];
+      remainder.shift();
+      remainder.push(0);
+      for (let i=0; i<parityCount; i++) remainder[i] ^= gfMultiply(generator[i+1],factor);
+    }
+    return remainder;
+  }
+  function parseHex(value) {
+    if (typeof value !== "string") throw Error("Hex input must be text.");
+    const chunks = value.trim().split(/[\s,:;_-]+/).filter(Boolean).map(chunk=>chunk.replace(/^0x/i,""));
+    if (chunks.length===0) throw Error("No data codewords supplied.");
+    let hex="";
+    for (const chunk of chunks) {
+      if (!/^[0-9a-fA-F]+$/.test(chunk)) throw Error(`Invalid hex fragment: ${chunk.slice(0,24)}`);
+      if (chunk.length%2) throw Error("Hex input requires complete two-digit bytes.");
+      hex += chunk;
+    }
+    if (hex.length>6000) throw Error("Input is larger than any QR data codeword stream.");
+    return hex.match(/../g).map(part=>parseInt(part,16));
+  }
+  function parseLayer2(value) {
+    let o;
+    try { o=typeof value==="string"?JSON.parse(value):value; }
+    catch(err) {throw Error("Layer 2 JSON parse error: "+err.message);}
+    if (!o || typeof o!=="object" || Array.isArray(o) || o.schema!=="qrgen.layer2.v1" || o.layer!==2)
+      throw Error("Expected qrgen.layer2.v1 JSON from Layer 2.");
+    const p=layout(o.version,o.ecc);
+    if (!Array.isArray(o.dataCodewords) || o.dataCodewords.length!==p.dataCount || !o.dataCodewords.every(validByte))
+      throw Error(`Layer 2 dataCodewords must contain exactly ${p.dataCount} bytes for version ${p.version}-${p.ecc}.`);
+    if (o.fits!==true || o.dataCapacityCodewords!==p.dataCount || o.dataCapacityBits!==p.dataCount*8)
+      throw Error("Layer 2 fit/capacity metadata disagrees with the QR configuration.");
+    if (o.bitLength!==p.dataCount*8 || typeof o.bitstream!=="string" || !/^[01]+$/.test(o.bitstream) || o.bitstream.length!==o.bitLength)
+      throw Error("Layer 2 bit length or bitstream is invalid.");
+    if (o.dataCodewords.some((b,i)=>o.bitstream.slice(i*8,i*8+8)!==b.toString(2).padStart(8,"0")))
+      throw Error("Layer 2 data codewords disagree with its bitstream.");
+    if (o.dataCodewordsHex!==undefined && (!Array.isArray(o.dataCodewordsHex) || o.dataCodewordsHex.length!==p.dataCount || o.dataCodewordsHex.some((hex,i)=>hex!==HEX(o.dataCodewords[i]))))
+      throw Error("Layer 2 hexadecimal entries disagree with dataCodewords.");
+    if (o.segmentBitLength!==undefined && (!Number.isInteger(o.segmentBitLength) || o.segmentBitLength<1 || o.segmentBitLength>o.bitLength))
+      throw Error("Layer 2 segmentBitLength is inconsistent.");
+    if (o.segmentBitstream!==undefined && (typeof o.segmentBitstream!=="string" || o.segmentBitstream.length!==o.segmentBitLength || !o.bitstream.startsWith(o.segmentBitstream)))
+      throw Error("Layer 2 segmentBitstream is inconsistent.");
+    if (o.layer1 && (o.layer1.schema!=="qrgen.layer1.v1" || o.layer1.version!==o.version || o.layer1.ecc!==o.ecc))
+      throw Error("Nested Layer 1 version/ECC metadata disagrees with Layer 2.");
+    return o;
+  }
+  function buildLayer3({version=2,ecc="M",dataCodewords,layer2=null,origin="manual-hex"}) {
+    const cfg=layout(version,ecc);
+    if (!Array.isArray(dataCodewords) || dataCodewords.length!==cfg.dataCount || !dataCodewords.every(validByte))
+      throw Error(`Need exactly ${cfg.dataCount} data codewords for V${version}-${ecc}; received ${Array.isArray(dataCodewords)?dataCodewords.length:"invalid input"}.`);
+    if (layer2 && (parseLayer2(layer2)!==layer2 || layer2.version!==version || layer2.ecc!==ecc || layer2.dataCodewords.some((b,i)=>b!==dataCodewords[i])))
+      throw Error("Layer 2 input and Layer 3 parameters disagree.");
+    let offset=0;
+    const blocks=[];
+    for (let i=0;i<cfg.blockCount;i++) {
+      const isShort=i<cfg.shortBlockCount;
+      const size=cfg.shortDataLength+(isShort?0:1);
+      const data=dataCodewords.slice(offset,offset+size);
+      if (data.length!==size) throw Error("Insufficient data for RS block partitioning.");
+      const parity=rsParity(data,cfg.parityCount);
+      blocks.push({index:i+1,group:isShort?1:2,groupName:isShort?"short":"long",dataOffset:offset,dataCodewords:data,
+                   dataCodewordsHex:data.map(HEX),eccCodewords:parity,eccCodewordsHex:parity.map(HEX),
+                   dataCount:size,eccCount:cfg.parityCount,totalCount:size+cfg.parityCount,
+                   minimumDistance:cfg.parityCount+1,correctableUnknownErrors:Math.floor(cfg.parityCount/2)});
+      offset+=size;
+    }
+    if (offset!==cfg.dataCount) throw Error("RS block partitioning did not consume all data bytes.");
+    const interleavedData=[],interleavedEcc=[],sequence=[];
+    for(let index=0;index<=cfg.shortDataLength;index++) for(const block of blocks)
+      if(index<block.dataCount){const byte=block.dataCodewords[index];interleavedData.push(byte);sequence.push({index:sequence.length,kind:"data",block:block.index,position:index,byte});}
+    for(let index=0;index<cfg.parityCount;index++)for(const block of blocks){
+      const byte=block.eccCodewords[index];interleavedEcc.push(byte);sequence.push({index:sequence.length,kind:"ecc",block:block.index,position:index,byte});
+    }
+    const interleavedCodewords=interleavedData.concat(interleavedEcc);
+    if (interleavedData.length!==cfg.dataCount || interleavedEcc.length!==cfg.blockCount*cfg.parityCount || interleavedCodewords.length!==cfg.rawCodewords)
+      throw Error("Interleaved stream length does not equal QR raw codeword capacity.");
+    const remainderBits="0".repeat(cfg.remainderCount);
+    const codewordBitstream=interleavedCodewords.map(x=>x.toString(2).padStart(8,"0")).join("");
+    const finalBitstream=codewordBitstream+remainderBits;
+    if (finalBitstream.length!==cfg.availableModules) throw Error("Total data-area modules do not match final bits.");
+    return {schema:"qrgen.layer3.v1",layer:3,version,ecc,origin,layer2:layer2||null,
+      dataCapacityCodewords:cfg.dataCount,numberOfBlocks:cfg.blockCount,eccCodewordsPerBlock:cfg.parityCount,
+      shortBlockCount:cfg.shortBlockCount,longBlockCount:cfg.longBlockCount,shortBlockDataLength:cfg.shortDataLength,
+      totalRawCodewords:cfg.rawCodewords,remainderBitCount:cfg.remainderCount,availableDataModules:cfg.availableModules,
+      generatorPolynomial:generatorPolynomial(cfg.parityCount),
+      blocks,interleavedData,interleavedEcc,interleavedCodewords,interleavedCodewordsHex:interleavedCodewords.map(HEX),
+      interleavingOrder:sequence,remainderBits,codewordBitstream,finalBitstream,finalBitLength:finalBitstream.length};
+  }
+  const HELLO_WORLD_DATA=[32,91,11,120,209,114,220,77,67,64,236,17,236,17,236,17];
+  const HELLO_WORLD_ECC=[196,35,39,119,235,215,231,226,93,23];
+  function exampleData(version=1,ecc="M") {
+    const cfg=layout(version,ecc),data=HELLO_WORLD_DATA.slice(0,Math.min(cfg.dataCount,HELLO_WORLD_DATA.length));
+    while (data.length<cfg.dataCount) data.push((data.length-10)%2===0 ? 0xEC : 0x11);
+    return data;
+  }
+  function exampleLayer2(version=1,ecc="M") {
+    const words=exampleData(version,ecc),bitstream=words.map(n=>n.toString(2).padStart(8,"0")).join("");
+    return {schema:"qrgen.layer2.v1",layer:2,version,ecc,origin:"example",
+      dataCapacityCodewords:words.length,dataCapacityBits:words.length*8,dataCodewords:words,
+      dataCodewordsHex:words.map(HEX),bitstream,bitLength:bitstream.length,fits:true};
+  }
+  const PARSER_BYTE_LIMIT=4000000;
+  const TABLE_PAGE=128;
+  let current=null, page=0, selectedBlock=1, importedBinary=null, updateTimer=null;
+  function disableButtons() {
+    for(const id of ["copyHex","copyBits","copyJson","downloadJson","downloadBin"]) $(id).disabled=!current;
+    $("prev").disabled=!current||page===0;
+    $("next").disabled=!current||(page+1)*TABLE_PAGE>=current.interleavingOrder.length;
+  }
+  function clearResult(message) {
+    current=null;
+    $("status").className="status error";$("status").textContent=message;
+    for(const id of ["sVersion","sData","sBlocks","sEcc","sRemainder"]) $(id).textContent="—";
+    $("meterData").style.width="0%";$("meterEcc").style.width="0%";
+    $("blockRows").replaceChildren();$("interleaveRows").replaceChildren();
+    $("blockSummary").textContent="—";$("blockTitle").textContent="Select a block";
+    for(const id of ["blockData","blockParity","generator","preview","outputSummary","pageInfo"]) $(id).textContent="—";
+    $("hexOutput").value="";$("bitsOutput").value="";
+    disableButtons();
+  }
+  function inspectBlock(index) {
+    if(!current)return;
+    selectedBlock=index;
+    const b=current.blocks[index-1];
+    $("blockTitle").textContent=`Block ${b.index}, ${b.groupName}: data / ECC`;
+    $("blockData").textContent=`${b.dataCount} data bytes · source offset ${b.dataOffset}\n${hexString(b.dataCodewords)}\n\nDecimal:\n${b.dataCodewords.join(", ")}`;
+    $("blockParity").textContent=`${b.eccCount} parity bytes · t = ${b.correctableUnknownErrors}\n${hexString(b.eccCodewords)}\n\nDecimal:\n${b.eccCodewords.join(", ")}`;
+    document.querySelectorAll("[data-block]").forEach(button=>button.setAttribute("aria-pressed",String(Number(button.dataset.block)===index)));
+  }
+  function updateBlocks() {
+    const tbody=$("blockRows");tbody.replaceChildren();
+    for(const b of current.blocks){
+      const tr=document.createElement("tr");
+      for(const value of [b.index, b.groupName, b.dataOffset, b.dataCount, b.eccCount, b.totalCount, b.correctableUnknownErrors]){
+        const td=document.createElement("td");
+        if(value===b.groupName){const span=document.createElement("span");span.className="tag"+(b.groupName==="long"?" long":"");span.textContent=value;td.append(span);}
+        else td.textContent=String(value);
+        tr.append(td);
+      }
+      const td=document.createElement("td"),btn=document.createElement("button");btn.type="button";btn.textContent="Inspect";btn.dataset.block=String(b.index);
+      btn.addEventListener("click",()=>inspectBlock(b.index));td.append(btn);tr.append(td);tbody.append(tr);
+    }
+    inspectBlock(selectedBlock<=current.blocks.length?selectedBlock:1);
+  }
+  function updateInterleave() {
+    if(!current)return;
+    const tbody=$("interleaveRows");tbody.replaceChildren();
+    const start=page*TABLE_PAGE,stop=Math.min(start+TABLE_PAGE,current.interleavingOrder.length);
+    for(const item of current.interleavingOrder.slice(start,stop)) {
+      const tr=document.createElement("tr");
+      for(const value of [item.index,HEX(item.byte),item.byte,item.byte.toString(2).padStart(8,"0"),item.kind.toUpperCase(),item.block,item.position]){
+        const td=document.createElement("td");td.textContent=String(value);if(item.kind==="ecc")td.style.color="#17704a";if([0,1,2,3].includes(tr.children.length))td.className="mono";tr.append(td);
+      }
+      tbody.append(tr);
+    }
+    $("pageInfo").textContent=`Bytes ${start}–${stop-1} of ${current.interleavingOrder.length} (page ${page+1}/${Math.ceil(current.interleavingOrder.length/TABLE_PAGE)})`;
+    disableButtons();
+  }
+  function updateResult(output){
+    current=output;page=0;selectedBlock=1;
+    $("status").className="status good";
+    $("status").textContent=`Success: ${output.dataCapacityCodewords} data + ${output.interleavedEcc.length} parity codewords, ${output.numberOfBlocks} RS blocks, plus ${output.remainderBitCount} remainder bits. Ready for Layer 4/5.`;
+    $("sVersion").textContent=`${output.version}-${output.ecc}`;
+    $("sData").textContent=output.dataCapacityCodewords.toLocaleString();
+    $("sBlocks").textContent=output.numberOfBlocks.toLocaleString();
+    $("sEcc").textContent=output.interleavedEcc.length.toLocaleString();
+    $("sRemainder").textContent=String(output.remainderBitCount);
+    $("meterData").style.width=100*output.dataCapacityCodewords/output.totalRawCodewords+"%";
+    $("meterEcc").style.width=100*output.interleavedEcc.length/output.totalRawCodewords+"%";
+    $("blockSummary").textContent=`${output.shortBlockCount} short blocks × ${output.shortBlockDataLength} data bytes; `+
+       `${output.longBlockCount} long blocks × ${output.shortBlockDataLength+1} data bytes; ${output.eccCodewordsPerBlock} RS parity bytes per block. `+
+       `Minimum RS distance ${output.eccCodewordsPerBlock+1}; up to ${Math.floor(output.eccCodewordsPerBlock/2)} unknown byte errors correctable per block.`;
+    $("generator").textContent=`degree ${output.eccCodewordsPerBlock} · coefficients (high → low)\n`+
+       hexString(output.generatorPolynomial)+`\n\nDecimal:\n${output.generatorPolynomial.join(", ")}`;
+    updateBlocks();updateInterleave();
+    const interleaved=output.interleavedCodewords;
+    $("hexOutput").value=Array.from({length:Math.ceil(interleaved.length/16)},(_,i)=>hexString(interleaved.slice(i*16,i*16+16))).join("\n");
+    $("bitsOutput").value=output.finalBitstream;
+    $("outputSummary").textContent=`${interleaved.length} complete codewords = ${output.codewordBitstream.length} bits, `+
+       `then ${output.remainderBitCount} zero bits → ${output.finalBitLength} data-area modules.`;
+    $("preview").textContent=JSON.stringify({...output,layer2:output.layer2?"<original Layer 2 export>":null,
+      blocks:`<${output.blocks.length} blocks>`,interleavingOrder:`<${output.interleavingOrder.length} positions>`,
+      interleavedCodewords:`<${output.interleavedCodewords.length} bytes>`,interleavedCodewordsHex:"<hex codewords>",
+      finalBitstream:`<${output.finalBitLength} bits>`,codewordBitstream:`<${output.codewordBitstream.length} bits>`},null,2);
+    disableButtons();
+  }
+  function recalc(){
+    try {
+      let input;
+      if($("sourceKind").value==="json"){
+        const layer2=parseLayer2($("jsonInput").value);
+        $("version").value=String(layer2.version);$("ecc").value=layer2.ecc;
+        input={version:layer2.version,ecc:layer2.ecc,dataCodewords:layer2.dataCodewords,layer2,origin:"layer2-json"};
+      } else if($("sourceKind").value==="hex"){
+        input={version:Number($("version").value),ecc:$("ecc").value,dataCodewords:parseHex($("hexInput").value),origin:"manual-hex"};
+      } else {
+        if(!importedBinary)throw Error("Choose a Layer 2 .bin file first.");
+        input={version:Number($("version").value),ecc:$("ecc").value,dataCodewords:Array.from(importedBinary),origin:"layer2-binary"};
+      }
+      updateResult(buildLayer3(input));
+    }catch(error){clearResult(error.message||"Cannot build Layer 3 output.");}
+  }
+  function schedule(){clearTimeout(updateTimer);updateTimer=setTimeout(recalc,180);}
+  function changeSource(){
+    const kind=$("sourceKind").value;
+    $("jsonGroup").classList.toggle("hidden",kind!=="json");
+    $("hexGroup").classList.toggle("hidden",kind!=="hex");
+    $("binaryGroup").classList.toggle("hidden",kind!=="binary");
+    $("version").disabled=kind==="json";$("ecc").disabled=kind==="json";
+    $("configurationNote").textContent=kind==="json"?"The version and ECC level are taken from the Layer 2 JSON and locked.":
+      "Set the version and ECC level that were used in Layer 2. Data byte count must match exactly.";
+    schedule();
+  }
+  function saveFile(bytes,name,type){
+    const blob=bytes instanceof Blob?bytes:new Blob([bytes],{type:type||"application/octet-stream"});
+    const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=name;
+    document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1300);
+  }
+  function downloadJSON(){if(current)saveFile(JSON.stringify(current,null,2),`qrgen-layer3-v${current.version}-${current.ecc}.json`,"application/json");}
+  function downloadBinary(){if(current)saveFile(new Uint8Array(current.interleavedCodewords),`qrgen-layer3-v${current.version}-${current.ecc}.bin`);}
+  async function copy(text){
+    if(!current)return;
+    try {await navigator.clipboard.writeText(text);}catch(_){const temp=document.createElement("textarea");temp.value=text;document.body.append(temp);temp.select();document.execCommand("copy");temp.remove();}
+  }
+  // Independent reference uses log/antilog GF arithmetic; unlike the main encoder's polynomial multiplier.
+  const EXP=new Uint8Array(512),LOG=new Int16Array(256);
+  (function initReferenceGF(){let v=1;for(let i=0;i<255;i++){
+    EXP[i]=v;LOG[v]=i;v<<=1;if(v&0x100)v^=0x11D;
+  }for(let i=255;i<512;i++)EXP[i]=EXP[i-255];})();
+  const gfReference=(a,b)=>a===0||b===0?0:EXP[LOG[a]+LOG[b]];
+  function referenceParity(data,degree){
+    let poly=[1];for(let i=0;i<degree;i++){
+      let next=new Array(poly.length+1).fill(0);
+      for(let j=0;j<poly.length;j++){next[j]^=poly[j];next[j+1]^=gfReference(poly[j],EXP[i]);}
+      poly=next;
+    }
+    const work=data.concat(new Array(degree).fill(0));
+    for(let i=0;i<data.length;i++){
+      const factor=work[i];if(!factor)continue;
+      for(let j=0;j<poly.length;j++)work[i+j]^=gfReference(poly[j],factor);
+    }
+    return work.slice(-degree);
+  }
+  function runChecks(){
+    const tests=[];
+    function check(name,fn){try{if(!fn())throw Error("Assertion failed");tests.push({ok:true,name});}catch(err){tests.push({ok:false,name,error:err.message});}}
+    const eq=(a,b)=>a.length===b.length && a.every((x,i)=>x===b[i]);
+    check("40 versions × 4 ECC configurations",()=>DATA.length===40&&BLOCKS.length===40&&ECC_PER_BLOCK.length===40&&
+      DATA.every(row=>row.length===4)&&DATA[39][0]===2956);
+    check("GF(256) polynomial: 0x80 × 0x02 = 0x1D",()=>gfMultiply(0x80,2)===0x1D);
+    check("GF(256) reference: 0x53 × 0xCA",()=>gfMultiply(0x53,0xCA)===gfReference(0x53,0xCA));
+    check("GF(256) polynomial and log implementations match for all 65,536 pairs",()=>{
+      for(let a=0;a<256;a++)for(let b=0;b<256;b++)if(gfMultiply(a,b)!==gfReference(a,b))return false;return true;
+    });
+    check("RS generator degree 10 has 11 coefficients and monic leading term",()=>{const g=generatorPolynomial(10);return g.length===11&&g[0]===1;});
+    check("QR reference: HELLO WORLD V1-M parity",()=>eq(rsParity(HELLO_WORLD_DATA,10),HELLO_WORLD_ECC));
+    check("Independent GF/log division confirms V1-M parity",()=>eq(referenceParity(HELLO_WORLD_DATA,10),HELLO_WORLD_ECC));
+    check("V1-M: 16 data + 10 parity + zero remainder bits",()=>{const o=buildLayer3({version:1,ecc:"M",dataCodewords:HELLO_WORLD_DATA});return o.numberOfBlocks===1&&o.finalBitLength===208&&o.remainderBitCount===0;});
+    check("V2-M default: 28 data + 16 parity, 7 remainder bits",()=>{const o=buildLayer3({version:2,ecc:"M",dataCodewords:exampleData(2,"M")});return o.interleavedCodewords.length===44&&o.remainderBitCount===7&&o.finalBitLength===359;});
+    check("V5-Q: two short/long pairs (15,15,16,16), 18 parity/block",()=>{
+      const o=buildLayer3({version:5,ecc:"Q",dataCodewords:exampleData(5,"Q")});
+      return eq(o.blocks.map(b=>b.dataCount),[15,15,16,16])&&o.interleavedEcc.length===72&&o.remainderBitCount===7;
+    });
+    check("Interleave uses block first bytes, then extra long-block byte",()=>{
+      const words=Array.from({length:62},(_,i)=>i);
+      const o=buildLayer3({version:5,ecc:"Q",dataCodewords:words});
+      return eq(o.interleavedData.slice(0,8),[0,15,30,46,1,16,31,47])&&eq(o.interleavedData.slice(-2),[45,61]);
+    });
+    check("ECC interleaving starts after all data, not per block",()=>{
+      const o=buildLayer3({version:5,ecc:"Q",dataCodewords:exampleData(5,"Q")});
+      return o.interleavingOrder[62].kind==="ecc"&&o.interleavingOrder[62].block===1&&o.interleavingOrder[63].block===2;
+    });
+    check("Every generated block parity matches independent logarithm reference",()=>{
+      for(const [v,e] of [[2,"M"],[3,"Q"],[5,"Q"],[7,"H"],[14,"M"],[30,"Q"],[40,"H"]]){
+        const o=buildLayer3({version:v,ecc:e,dataCodewords:exampleData(v,e)});
+        if(!o.blocks.every(b=>eq(referenceParity(b.dataCodewords,b.eccCount),b.eccCodewords)))return false;
+      }return true;
+    });
+    check("All 160 QR configurations: block sizes and exact final lengths",()=>{
+      for(let v=1;v<=40;v++)for(const e of ECC_LEVELS){
+        const cfg=layout(v,e),out=buildLayer3({version:v,ecc:e,dataCodewords:exampleData(v,e)});
+        if(out.blocks.length!==cfg.blockCount||out.finalBitLength!==cfg.availableModules||out.interleavedCodewords.length!==cfg.rawCodewords||
+          out.blocks.reduce((n,b)=>n+b.dataCount,0)!==cfg.dataCount||!out.remainderBits.match(/^0*$/))return false;
+      }return true;
+    });
+    check("Reject missing one data codeword",()=>{try{buildLayer3({version:1,ecc:"M",dataCodewords:HELLO_WORLD_DATA.slice(1)});return false;}catch(_){return true;}});
+    check("Reject extra codeword",()=>{try{buildLayer3({version:1,ecc:"M",dataCodewords:HELLO_WORLD_DATA.concat([1])});return false;}catch(_){return true;}});
+    check("Reject out-of-range bytes",()=>{try{buildLayer3({version:1,ecc:"M",dataCodewords:HELLO_WORLD_DATA.map((n,i)=>i===0?256:n)});return false;}catch(_){return true;}});
+    check("Reject invalid ECC and version",()=>{try{layout(41,"M");return false;}catch(_){try{layout(1,"X");return false;}catch(_){return true;}}});
+    check("Layer 2 JSON import is round-trippable",()=>{const f=exampleLayer2(),p=parseLayer2(JSON.stringify(f));const o=buildLayer3({version:p.version,ecc:p.ecc,dataCodewords:p.dataCodewords,layer2:p});return o.layer2===p&&o.schema==="qrgen.layer3.v1";});
+    check("Reject corrupted Layer 2 codeword bitstream",()=>{const o=exampleLayer2();o.bitstream=(o.bitstream[0]==="0"?"1":"0")+o.bitstream.slice(1);try{parseLayer2(o);return false;}catch(_){return true;}});
+    check("Reject inconsistent Layer 2 capacity",()=>{const o=exampleLayer2();o.dataCapacityCodewords=22;try{parseLayer2(o);return false;}catch(_){return true;}});
+    check("Reject malformed JSON",()=>{try{parseLayer2("not JSON");return false;}catch(_){return true;}});
+    check("Reject invalid hexadecimal",()=>{try{parseHex("ABC");return false;}catch(_){return true;}});
+    check("Manual hexadecimal retains 00 and FF",()=>eq(parseHex("00 0xFF,01"),[0,255,1]));
+    check("Remainder bit count does not depend on ECC level",()=>{for(let v=1;v<=40;v++)if(new Set([...ECC_LEVELS].map(e=>layout(v,e).remainderCount)).size!==1)return false;return true;});
+    check("Export bits preserve leading zeros",()=>{const o=buildLayer3({version:1,ecc:"M",dataCodewords:HELLO_WORLD_DATA});return o.finalBitstream.startsWith("00100000")&&o.finalBitstream.length===208;});
+    $("tests").textContent=tests.map(t=>`${t.ok?"PASS":"FAIL"} ${t.name}${t.error?" · "+t.error:""}`).join("\n")+`\n\n${tests.filter(t=>t.ok).length}/${tests.length} passed`;
+    return tests;
+  }
+  for(let v=1;v<=40;v++){const option=document.createElement("option");option.value=String(v);option.textContent=`Version ${v} (${17+4*v} × ${17+4*v})`;option.selected=v===2;$("version").append(option);}
+  $("jsonInput").value=JSON.stringify(exampleLayer2(2,"M"),null,2);
+  $("hexInput").value=hexString(HELLO_WORLD_DATA);
+  $("jsonExample").addEventListener("click",()=>{$("jsonInput").value=JSON.stringify(exampleLayer2(1,"M"),null,2);$("jsonName").textContent="Built-in version 1-M test vector";recalc();});
+  $("v2Example").addEventListener("click",()=>{$("jsonInput").value=JSON.stringify(exampleLayer2(2,"M"),null,2);$("jsonName").textContent="Built-in version 2-M test vector";recalc();});
+  $("hexExample").addEventListener("click",()=>{$("hexInput").value=hexString(HELLO_WORLD_DATA);$("version").value="1";$("ecc").value="M";recalc();});
+  $("sourceKind").addEventListener("change",changeSource);
+  $("version").addEventListener("change",schedule);$("ecc").addEventListener("change",schedule);
+  $("jsonInput").addEventListener("input",schedule);$("hexInput").addEventListener("input",schedule);
+  $("calculate").addEventListener("click",recalc);$("runTests").addEventListener("click",runChecks);
+  $("jsonFile").addEventListener("change",async()=>{const f=$("jsonFile").files?.[0];if(!f)return;try{
+    if(f.size>PARSER_BYTE_LIMIT)throw Error("JSON file exceeds 4 MB input limit.");
+    $("jsonInput").value=await f.text();$("jsonName").textContent=`Imported ${f.name} (${f.size} bytes)`;recalc();
+  }catch(err){clearResult(err.message);}});
+  $("binFile").addEventListener("change",async()=>{const f=$("binFile").files?.[0];if(!f)return;try{
+    if(f.size>2956)throw Error("Binary file exceeds the maximum QR data byte capacity (2,956 bytes).");
+    importedBinary=new Uint8Array(await f.arrayBuffer());$("binName").textContent=`Imported ${f.name}: ${importedBinary.length} data bytes`;recalc();
+  }catch(err){importedBinary=null;clearResult(err.message);}});
+  $("prev").addEventListener("click",()=>{if(page>0){page--;updateInterleave();}});
+  $("next").addEventListener("click",()=>{if(current&&(page+1)*TABLE_PAGE<current.interleavingOrder.length){page++;updateInterleave();}});
+  $("copyHex").addEventListener("click",()=>copy($("hexOutput").value));
+  $("copyBits").addEventListener("click",()=>copy(current?.finalBitstream));
+  $("copyJson").addEventListener("click",()=>copy(JSON.stringify(current,null,2)));
+  $("downloadJson").addEventListener("click",downloadJSON);$("downloadBin").addEventListener("click",downloadBinary);
+  changeSource();recalc();
+  window.QRgenLayer3=Object.freeze({layout,gfMultiply,generatorPolynomial,rsParity,parseHex,parseLayer2,buildLayer3,exampleData,exampleLayer2,referenceParity,runChecks});
+})();
+</script>
+</body>
+</html>

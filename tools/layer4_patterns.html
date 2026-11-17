@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>QRgen Lab — Layer 4: Structural Patterns</title>
+<style>
+:root{color-scheme:light;--ink:#152236;--muted:#52627b;--line:#d7e0ed;--soft:#f2f6fb;--blue:#265fc4;--good:#14663d;--bad:#ae2332}
+*{box-sizing:border-box}body{margin:0;color:var(--ink);background:#eef3fa;font:15px/1.45 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+header{background:linear-gradient(115deg,#172b52,#254f92);color:white;padding:24px max(22px,calc((100% - 1260px)/2));box-shadow:0 3px 14px #182b4a25}
+header h1{font-size:clamp(24px,3vw,34px);line-height:1.15;margin:4px 0 10px}header p{margin:0;color:#e5efff;max-width:1010px}header .eyebrow{font-weight:750;color:#b9ddff;letter-spacing:.08em;text-transform:uppercase;font-size:12px}
+main{max-width:1310px;margin:22px auto 50px;padding:0 20px}a{color:var(--blue)}.panel{background:white;border:1px solid var(--line);border-radius:12px;padding:20px;margin:0 0 17px;box-shadow:0 2px 7px #20385409}.panel h2{font-size:18px;margin:0 0 13px}
+.split{display:grid;grid-template-columns:minmax(320px,1.12fr) minmax(290px,1fr);gap:17px}.result-grid{display:grid;grid-template-columns:minmax(410px,1.4fr) minmax(275px,.75fr);gap:17px}.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}label{font-weight:700;display:block;margin:0 0 6px}select,textarea,input,button{font:inherit}select,textarea,input[type="number"]{border:1px solid #aebed3;border-radius:7px;padding:10px 11px;color:var(--ink);background:#fff;width:100%}textarea{resize:vertical;min-height:112px;font:12px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace}textarea:focus,select:focus,button:focus-visible{outline:3px solid #8bb9ff;outline-offset:1px}.hint{font-size:12px;color:var(--muted);margin:5px 0 9px}.small{font-size:13px;color:var(--muted)}.hidden{display:none!important}
+.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:12px 0}.toolbar button{cursor:pointer;border:1px solid #bdcbe0;border-radius:7px;padding:8px 12px;color:#214779;background:#f6f9ff;font-size:13px;font-weight:650}.toolbar button:hover:not(:disabled){background:#e6efff}.toolbar button.primary{background:#245fbd;color:#fff;border-color:#245fbd}.toolbar button.primary:hover{background:#164d9d}.toolbar button:disabled{opacity:.45;cursor:not-allowed}
+.status{padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--soft);margin:10px 0 14px}.status.good{background:#ecfaf1;border-color:#a5dac0;color:var(--good)}.status.error{background:#fff1f2;border-color:#f0bec5;color:var(--bad)}.stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px;margin:12px 0}.stat{border:1px solid var(--line);border-radius:8px;background:#f8fbff;padding:10px;min-width:0}.stat .value{display:block;font-weight:750;font-size:21px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.stat .name{font-size:12px;color:var(--muted)}
+.preview{background:#eff4fa;border:1px solid var(--line);border-radius:9px;padding:15px;display:grid;place-items:center;min-width:0}canvas{display:block;max-width:100%;width:auto;height:auto;image-rendering:pixelated;cursor:crosshair;background:white;box-shadow:0 3px 18px #172b5220}.canvas-desc{color:var(--muted);font-size:12px;text-align:center;margin:9px 0 0}.legend{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;font-size:13px}.legend-item{padding:7px 9px;border:1px solid var(--line);border-radius:7px;display:flex;align-items:center;justify-content:space-between;gap:7px;min-width:0}.legend-label{display:flex;align-items:center;gap:7px;min-width:0}.swatch{display:inline-block;flex:none;width:15px;height:15px;border-radius:3px;border:1px solid #91a2b8}.mono,pre,code{font-family:ui-monospace,SFMono-Regular,Consolas,Monaco,monospace;font-size:12px}.inspect{white-space:pre-wrap;overflow-wrap:anywhere;background:#f8fbff;border:1px solid var(--line);border-radius:7px;padding:12px;min-height:88px;margin:12px 0}.details{background:#f8fbff;border:1px solid var(--line);border-radius:7px;padding:12px;white-space:pre-wrap;overflow-wrap:anywhere;max-height:260px;overflow:auto;font-size:12px;line-height:1.5}.tags{display:flex;flex-wrap:wrap;gap:7px;margin:8px 0}.tag{font-size:12px;padding:5px 8px;border:1px solid #c5d6ee;background:#f0f6ff;border-radius:6px}.footnote{font-size:12px;color:var(--muted);margin:12px 0 0}
+@media(max-width:970px){.split,.result-grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:580px){.fields,.legend{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}main{padding:0 10px}.panel{padding:15px}}
+</style>
+</head>
+<body>
+<header><div class="eyebrow">QRgen Lab · Layer 4 / 8</div><h1>Structural patterns and reserved QR modules</h1><p>Build the exact Model 2 function-module layout: finder patterns, white separators, timing and alignment targets, format/version reservations, and the fixed dark module. Inspect any cell and export the matrix for Layer 5. Entirely offline.</p></header>
+<main>
+<div class="split">
+  <section class="panel">
+    <h2>1. QR version and source</h2>
+    <label for="inputKind">Input source</label><select id="inputKind"><option value="manual">Choose version and ECC manually</option><option value="json">Import Layer 3 JSON (optional)</option></select>
+    <div class="fields" style="margin-top:13px">
+      <div><label for="version">QR version</label><select id="version"></select><p class="hint">Default version 2, as in the QRgen project.</p></div>
+      <div><label for="ecc">ECC level</label><select id="ecc"><option>L</option><option selected>M</option><option>Q</option><option>H</option></select><p class="hint">Does not change structural patterns; retained for Layer 5.</p></div>
+    </div>
+    <div id="jsonGroup" class="hidden" style="margin-top:12px"><label for="jsonFile">Load Layer 3 JSON file</label><input type="file" id="jsonFile" accept=".json,application/json"><p class="hint" id="importName">Or paste a complete qrgen.layer3.v1 JSON export:</p><textarea id="jsonInput" aria-label="Layer 3 JSON" spellcheck="false"></textarea><p class="hint">Imported version/ECC values are locked. Encoded data remains untouched and is carried to Layer 5 through the export.</p></div>
+    <div class="toolbar"><button type="button" class="primary" id="calculate">Generate Layer 4</button><button type="button" id="runTests">Run regression checks</button><button type="button" id="exampleV2">Version 2</button><button type="button" id="exampleV7">Version 7</button><button type="button" id="exampleV40">Version 40</button></div>
+    <pre id="tests" class="details hidden" role="status"></pre>
+    <p class="footnote"><a href="layer3_encoder.html">Layer 3 tool</a> · <a href="../docs/QR_CODE_CONSTRUCTION.md">Construction guide</a> · <a href="TOOLS_CATALOG.html">Tools catalog</a></p>
+  </section>
+  <section class="panel">
+    <h2>2. Function-pattern rules</h2>
+    <div class="tags"><span class="tag">Finder: 3 × 7×7</span><span class="tag">Separator: white</span><span class="tag">Timing: row/column 6</span><span class="tag">Alignment: 5×5</span><span class="tag">Format: 2 × 15</span><span class="tag">Version: 2 × 18 (v≥7)</span></div>
+    <p class="small">Each function cell has a <strong>reservation flag</strong> independent of its color. A light finder separator, for example, is reserved just like a black finder module.</p>
+    <p class="small">The format and version fields are <strong>reserved but not populated</strong>; their BCH-protected values are determined in Layer 7. The single permanent dark module is at <code>(8, N − 8)</code>.</p>
+    <p class="small">Alignment targets are placed using version-specific centres, skipping the three finder corners. Where an alignment target crosses the timing line, the alignment modules take precedence.</p>
+    <p class="small"><strong>Scope:</strong> Layer 4 does not place Layer 3 data/ECC bits, apply a mask, or write BCH bits. Those belong to later layers.</p>
+  </section>
+</div>
+<section class="panel">
+  <h2>3. Structure and capacity</h2><div class="status" id="status" role="status" aria-live="polite"></div>
+  <div class="stats">
+    <div class="stat"><span class="value" id="statVersion">—</span><span class="name">Version / ECC</span></div>
+    <div class="stat"><span class="value" id="statSize">—</span><span class="name">Matrix modules/side</span></div>
+    <div class="stat"><span class="value" id="statAlign">—</span><span class="name">Alignment patterns</span></div>
+    <div class="stat"><span class="value" id="statReserved">—</span><span class="name">Reserved modules</span></div>
+    <div class="stat"><span class="value" id="statFree">—</span><span class="name">Data + ECC + remainder modules</span></div>
+  </div>
+  <div id="axisPositions" class="small"></div>
+</section>
+<div class="result-grid">
+  <section class="panel">
+    <h2>4. Interactive matrix</h2>
+    <div class="fields">
+      <div><label for="displayMode">Coloring</label><select id="displayMode"><option value="regions">Function regions (diagnostic)</option><option value="mono" selected>QR dark/light values</option><option value="reserved">Reserved vs. available</option></select></div>
+      <div><label for="highlight">Highlight one category</label><select id="highlight"><option value="all">All categories</option><option value="finder">Finder</option><option value="separator">Separators</option><option value="timing">Timing</option><option value="alignment">Alignment</option><option value="format">Format (pending)</option><option value="version">Version (pending)</option><option value="dark">Fixed dark</option><option value="data">Available data region</option></select></div>
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;margin:10px 0;font-weight:500"><input type="checkbox" id="showGrid" checked> Show module grid for smaller versions</label>
+    <div class="preview"><canvas id="matrix" role="img" aria-label="QR function-module and reservation map" tabindex="0"></canvas><div class="canvas-desc">Move over or click a module to inspect its coordinates. Diagram only: not a scannable QR symbol.</div></div>
+    <div class="toolbar"><button type="button" id="downloadSvg">Download SVG</button><button type="button" id="downloadPng">Download PNG</button></div>
+  </section>
+  <section class="panel">
+    <h2>5. Category breakdown</h2><div id="legend" class="legend"></div>
+    <h2 style="margin-top:22px">Module inspector</h2><div id="inspector" class="inspect mono" role="status">Point at a module to inspect its reservation, category and assigned color.</div>
+    <h2 style="margin-top:20px">Layout invariants</h2><pre id="invariants" class="details">—</pre>
+  </section>
+</div>
+<section class="panel">
+  <h2>6. Export for Layer 5</h2>
+  <p class="small">The <code>qrgen.layer4.v1</code> JSON contains <code>modules[y][x]</code> (0, 1 or null), <code>reserved[y][x]</code> (boolean), <code>kinds[y][x]</code> (category), and optional imported <code>layer3</code> data. A null function module represents a reserved format/version placeholder; a null data module represents an unfilled encoding position.</p>
+  <div class="toolbar"><button type="button" id="copyJson">Copy Layer 4 JSON</button><button type="button" id="downloadJson">Download Layer 4 JSON</button><button type="button" id="copyReserved">Copy reserved map (0/1)</button></div>
+  <details><summary><strong>Export preview and next-layer contract</strong></summary><pre class="details" id="jsonPreview">—</pre></details>
+  <p class="footnote">Runs as a standalone file with no external JavaScript, images, Node.js, network, or server. The separate four-module quiet zone is added in Layer 8, not reserved in this N×N matrix.</p>
+</section>
+</main>
+<script>
+"use strict";
+// Classic QR Code Model 2 — Layer 4 only. Spec: docs/QR_CODE_CONSTRUCTION.md, §8.
+// Pure functions below are also exposed for offline regression via QRgenLayer4.
+(function () {
+  const $=id=>document.getElementById(id);
+  const ORDER=["finder","separator","timing","alignment","format","version","dark","data"];
+  const LABELS={finder:"Finder",separator:"White separator",timing:"Timing",alignment:"Alignment",format:"Format slots",version:"Version slots",dark:"Fixed dark",data:"Unreserved data"};
+  const COLORS={finder:"#152236",separator:"#ffffff",timing:"#46b7d7",alignment:"#f39b54",format:"#a98fe0",version:"#e78bc1",dark:"#1f2937",data:"#eef2f8"};
+  function alignmentPositions(version){
+    if(!Number.isInteger(version)||version<1||version>40)throw Error("Version must be 1–40.");
+    if(version===1)return [];
+    const count=Math.floor(version/7)+2;
+    const step=Math.floor((version*8+count*3+5)/(count*4-4))*2;
+    const positions=new Array(count);
+    for(let i=count-1,p=version*4+10;i>=1;i--,p-=step)positions[i]=p;
+    positions[0]=6;
+    return positions;
+  }
+  function availableModules(version){
+    if(!Number.isInteger(version)||version<1||version>40)throw Error("Version must be 1–40.");
+    let result=(16*version+128)*version+64;
+    if(version>=2){const n=Math.floor(version/7)+2;result-=(25*n-10)*n-55;}
+    if(version>=7)result-=36;
+    return result;
+  }
+  function createLayout(version=2,ecc="M"){
+    if(!Number.isInteger(version)||version<1||version>40)throw Error("Version must be an integer between 1 and 40.");
+    if(!["L","M","Q","H"].includes(ecc))throw Error("ECC level must be L, M, Q, or H.");
+    const size=17+4*version;
+    const modules=Array.from({length:size},()=>Array(size).fill(null));
+    const reserved=Array.from({length:size},()=>Array(size).fill(false));
+    const kinds=Array.from({length:size},()=>Array(size).fill("data"));
+    const counts=Object.fromEntries(ORDER.map(k=>[k,0]));
+    const set=(x,y,kind,color)=>{
+      if(x<0||y<0||x>=size||y>=size)return;
+      const previous=kinds[y][x];
+      if(previous==="finder"||previous==="separator"){
+        if(kind!==previous)throw Error(`Pattern collision at ${x},${y}: ${previous} / ${kind}`);
+      }
+      if(["format","version","dark"].includes(kind)&&previous!=="data")
+        throw Error(`Metadata reservation collision at (${x},${y}): ${previous} / ${kind}`);
+      if(previous!==kind){counts[previous]--;counts[kind]++;}
+      kinds[y][x]=kind;
+      reserved[y][x]=true;
+      modules[y][x]=color;
+    };
+    counts.data=size*size;
+    // Place visible timing spans first. Alignment patterns later supersede timing modules.
+    for(let i=8;i<size-8;i++){
+      set(i,6,"timing",i%2===0?1:0);
+      set(6,i,"timing",i%2===0?1:0);
+    }
+    // Finder: Chebyshev rings of radii 0–1 (dark), 2 (light), 3 (dark); radius 4 separator.
+    for(const [cx,cy] of [[3,3],[size-4,3],[3,size-4]]){
+      for(let dy=-4;dy<=4;dy++)for(let dx=-4;dx<=4;dx++){
+        const distance=Math.max(Math.abs(dx),Math.abs(dy));
+        if(distance===4)set(cx+dx,cy+dy,"separator",0);
+        else set(cx+dx,cy+dy,"finder",distance===2?0:1);
+      }
+    }
+    const axes=alignmentPositions(version),last=axes.length-1,centres=[];
+    for(let iy=0;iy<axes.length;iy++)for(let ix=0;ix<axes.length;ix++){
+      if((iy===0&&ix===0)||(iy===0&&ix===last)||(iy===last&&ix===0))continue;
+      const x=axes[ix],y=axes[iy];centres.push([x,y]);
+      for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){
+        const dist=Math.max(Math.abs(dx),Math.abs(dy));
+        set(x+dx,y+dy,"alignment",dist===1?0:1);
+      }
+    }
+    // Reserve both 15-bit format copies. The BCH bits are written during Layer 7.
+    const formatSlots=[[],[]];
+    for(let i=0;i<15;i++){
+      let x,y;
+      if(i<=5){x=8;y=i;}
+      else if(i===6){x=8;y=7;}
+      else if(i===7){x=8;y=8;}
+      else if(i===8){x=7;y=8;}
+      else {x=14-i;y=8;}
+      set(x,y,"format",null);formatSlots[0].push([x,y]);
+      if(i<8){x=size-1-i;y=8;}
+      else{x=8;y=size-15+i;}
+      set(x,y,"format",null);formatSlots[1].push([x,y]);
+    }
+    // From version 7, reserve the two 18-bit version-information copies.
+    const versionSlots=[[],[]];
+    if(version>=7)for(let i=0;i<18;i++){
+      const row=Math.floor(i/3),j=i%3;
+      const a=[size-11+j,row],b=[row,size-11+j];
+      set(a[0],a[1],"version",null);set(b[0],b[1],"version",null);
+      versionSlots[0].push(a);versionSlots[1].push(b);
+    }
+    // Fixed dark module is not one of the 30 format slots.
+    set(8,size-8,"dark",1);
+    const free=counts.data,expected=availableModules(version);
+    if(free!==expected)throw Error(`Reservation mismatch: ${free} free modules, expected ${expected}.`);
+    const pending=counts.format+counts.version;
+    if(counts.finder!==147||counts.separator!==45||counts.format!==30||counts.version!==(version>=7?36:0)||counts.dark!==1)
+      throw Error("Invalid fixed-pattern counts.");
+    if(centres.length!==(axes.length?axes.length**2-3:0)||counts.alignment!==centres.length*25)
+      throw Error("Incorrect alignment-pattern dimensions or overlap.");
+    if(pending!==30+(version>=7?36:0))throw Error("Incorrect reserved metadata size.");
+    return {schema:"qrgen.layer4.v1",layer:4,version,ecc,size,
+      alignmentPositions:axes,alignmentCentres:centres,
+      formatSlots,versionSlots,fixedDark:[8,size-8],
+      counts,availableDataModules:free,rawCodewords:Math.floor(free/8),remainderBitCount:free%8,
+      reserved,modules,kinds};
+  }
+  function parseLayer3(value){
+    let obj;try{obj=typeof value==="string"?JSON.parse(value):value;}catch(e){throw Error("Invalid Layer 3 JSON: "+e.message);}
+    if(!obj||typeof obj!=="object"||Array.isArray(obj)||obj.schema!=="qrgen.layer3.v1"||obj.layer!==3)
+      throw Error("Expected JSON exported from Layer 3 (qrgen.layer3.v1).");
+    if(!Number.isInteger(obj.version)||obj.version<1||obj.version>40||!["L","M","Q","H"].includes(obj.ecc))throw Error("Layer 3 version/ECC is invalid.");
+    const bits=availableModules(obj.version),raw=Math.floor(bits/8);
+    if(obj.availableDataModules!==bits||obj.remainderBitCount!==bits%8||obj.totalRawCodewords!==raw)
+      throw Error("Layer 3 capacity metadata disagrees with version geometry.");
+    if(typeof obj.finalBitstream!=="string"||!/^[01]+$/.test(obj.finalBitstream)||obj.finalBitstream.length!==bits||obj.finalBitLength!==bits)
+      throw Error("Layer 3 final bitstream length/content does not match version.");
+    if(!Array.isArray(obj.interleavedCodewords)||obj.interleavedCodewords.length!==raw||!obj.interleavedCodewords.every(b=>Number.isInteger(b)&&b>=0&&b<=255))
+      throw Error("Layer 3 interleaved codewords are missing or invalid.");
+    if(obj.finalBitstream.slice(0,raw*8)!==obj.interleavedCodewords.map(b=>b.toString(2).padStart(8,"0")).join(""))
+      throw Error("Layer 3 codewords disagree with final bitstream.");
+    if(obj.finalBitstream.slice(raw*8)!=="0".repeat(bits%8))throw Error("Layer 3 remainder bits must be zero.");
+    return obj;
+  }
+  function buildLayer4({version=2,ecc="M",layer3=null}={}){
+    const o=createLayout(version,ecc);
+    if(layer3){const imp=parseLayer3(layer3);if(imp.version!==version||imp.ecc!==ecc)throw Error("Layer 3 version/ECC differs from Layer 4 configuration.");o.layer3=imp;}
+    else o.layer3=null;
+    return o;
+  }
+  const examples=[[1,0],[2,1],[3,1],[7,6],[14,13],[40,46]];
+  function runChecks(){
+    const tests=[],check=(name,fn)=>{try{if(!fn())throw Error("Assertion failed");tests.push({ok:true,name});}catch(e){tests.push({ok:false,name,error:e.message});}};
+    check("All 40 versions have 17+4v modules per side",()=>{for(let v=1;v<=40;v++)if(createLayout(v).size!==17+4*v)return false;return true;});
+    check("All 40 versions have exact unreserved module count",()=>{for(let v=1;v<=40;v++){const x=createLayout(v);if(x.availableDataModules!==availableModules(v))return false;}return true;});
+    check("All 40 versions reserve light cells as well as dark cells",()=>{for(let v=1;v<=40;v++){const x=createLayout(v);if(x.reserved[7][0]!==true||x.modules[7][0]!==0)return false;}return true;});
+    check("Finder patterns remain 3 × 49 modules",()=>{for(let v=1;v<=40;v++)if(createLayout(v).counts.finder!==147)return false;return true;});
+    check("Separators contain exactly 45 light modules",()=>{for(let v=1;v<=40;v++){const x=createLayout(v);if(x.counts.separator!==45)return false;for(let y=0;y<x.size;y++)for(let col=0;col<x.size;col++)if(x.kinds[y][col]==="separator"&&x.modules[y][col]!==0)return false;}return true;});
+    check("Alignment positions at versions 1/2/7/14/40",()=>JSON.stringify([alignmentPositions(1),alignmentPositions(2),alignmentPositions(7),alignmentPositions(14),alignmentPositions(40)])===JSON.stringify([[],[6,18],[6,22,38],[6,26,46,66],[6,30,58,86,114,142,170]]));
+    check("Alignment pattern totals at 1/2/3/7/14/40",()=>examples.every(([v,n])=>createLayout(v).alignmentCentres.length===n));
+    check("Alignment outer border dark, inner ring light, centre dark",()=>{let a=createLayout(7);return a.modules[22][22]===1&&a.modules[21][22]===0&&a.modules[20][22]===1&&a.modules[20][20]===1;});
+    check("Alignment replaces timing correctly",()=>{let a=createLayout(7);return a.kinds[22][6]==="alignment"&&a.kinds[6][22]==="alignment"&&a.counts.timing>0;});
+    check("Version 1 timing stripe alternates from (8,6)",()=>{let a=createLayout(1);return [8,9,10,11,12].every(x=>a.modules[6][x]===Number(x%2===0)&&a.kinds[6][x]==="timing");});
+    check("All versions have two independent 15-bit format reservations",()=>{for(let v=1;v<=40;v++){let a=createLayout(v);const pts=a.formatSlots.flat().map(p=>p.join(","));if(pts.length!==30||new Set(pts).size!==30||a.counts.format!==30)return false;}return true;});
+    check("Version fields absent below version 7, twice 18 above",()=>{for(let v=1;v<=40;v++){let a=createLayout(v);if(a.versionSlots.flat().length!==(v>=7?36:0))return false;}return true;});
+    check("Metadata slots have null, not precomputed BCH values",()=>{for(let v of [1,2,7,14,40]){const a=createLayout(v);for(const p of [...a.formatSlots.flat(),...a.versionSlots.flat()])if(a.modules[p[1]][p[0]]!==null||!a.reserved[p[1]][p[0]])return false;}return true;});
+    check("Fixed dark module at (8,N−8), never format",()=>{for(let v=1;v<=40;v++){let a=createLayout(v);if(a.kinds[a.size-8][8]!=="dark"||a.modules[a.size-8][8]!==1)return false;}return true;});
+    check("Every cell: reserved ⇔ category is not data",()=>{for(let v=1;v<=40;v++){const a=createLayout(v);for(let y=0;y<a.size;y++)for(let x=0;x<a.size;x++)if(a.reserved[y][x]!== (a.kinds[y][x]!=="data"))return false;}return true;});
+    check("Every cell: unreserved remains null for Layer 5",()=>{for(let v=1;v<=40;v++){const a=createLayout(v);for(let y=0;y<a.size;y++)for(let x=0;x<a.size;x++)if(!a.reserved[y][x]&&a.modules[y][x]!==null)return false;}return true;});
+    check("All 40 versions: total categories exactly N²",()=>{for(let v=1;v<=40;v++){const a=createLayout(v);if(Object.values(a.counts).reduce((p,n)=>p+n,0)!==a.size*a.size)return false;}return true;});
+    check("V1: 208 free modules, 0 remainder",()=>{let a=createLayout(1);return a.availableDataModules===208&&a.rawCodewords===26&&a.remainderBitCount===0;});
+    check("V2: 359 free modules, 7 remainder",()=>{let a=createLayout(2);return a.availableDataModules===359&&a.rawCodewords===44&&a.remainderBitCount===7;});
+    check("V7: 1568 free modules, zero remainder",()=>{let a=createLayout(7);return a.availableDataModules===1568&&a.remainderBitCount===0;});
+    check("V40: 29648 free modules",()=>{let a=createLayout(40);return a.availableDataModules===29648&&a.rawCodewords===3706;});
+    check("ECC choice leaves geometry unchanged",()=>{let a=createLayout(7,"L"),b=createLayout(7,"H");return JSON.stringify(a.modules)===JSON.stringify(b.modules)&&JSON.stringify(a.reserved)===JSON.stringify(b.reserved);});
+    check("Reject invalid versions and ECC",()=>{try{createLayout(0);return false;}catch(_){}try{createLayout(41);return false;}catch(_){}try{createLayout(2,"X");return false;}catch(_){}return true;});
+    check("Reject malformed Layer 3 JSON",()=>{try{parseLayer3('{bogus');return false;}catch(_){return true;}});
+    check("Reject imported stream with wrong length",()=>{try{parseLayer3({schema:"qrgen.layer3.v1",layer:3,version:2,ecc:"M",finalBitstream:"000",finalBitLength:3,availableDataModules:359,totalRawCodewords:44,remainderBitCount:7,interleavedCodewords:Array(44).fill(0)});return false;}catch(_){return true;}});
+    check("Accept correctly shaped Layer 3 example",()=>{const b=Array(26).fill(0),x={schema:"qrgen.layer3.v1",layer:3,version:1,ecc:"M",finalBitstream:"0".repeat(208),finalBitLength:208,availableDataModules:208,totalRawCodewords:26,remainderBitCount:0,interleavedCodewords:b};return buildLayer4({version:1,ecc:"M",layer3:x}).layer3===x;});
+    $("tests").textContent=tests.map(x=>`${x.ok?"PASS":"FAIL"}  ${x.name}${x.error?" — "+x.error:""}`).join("\n")+`\n\n${tests.filter(x=>x.ok).length} / ${tests.length} passed`;
+    $("tests").classList.remove("hidden");return tests;
+  }
+  let current=null,hovered=null,updateTimer=null;
+  function uiError(msg){current=null;$("status").className="status error";$("status").textContent=msg;for(const id of ["statVersion","statSize","statAlign","statReserved","statFree"])$(id).textContent="—";$("legend").replaceChildren();$("invariants").textContent="—";$("axisPositions").textContent="";$("jsonPreview").textContent="—";for(const id of ["downloadSvg","downloadPng","copyJson","downloadJson","copyReserved"])$(id).disabled=true;const c=$("matrix");c.width=1;c.height=1;$("inspector").textContent="No layout available.";}
+  function redraw(){
+    if(!current)return;
+    const o=current,canvas=$("matrix"),ctx=canvas.getContext("2d"),n=o.size;
+    const px=Math.max(4,Math.floor(732/n));canvas.width=n*px;canvas.height=n*px;
+    ctx.imageSmoothingEnabled=false;
+    const view=$("displayMode").value,focus=$("highlight").value;
+    for(let y=0;y<n;y++)for(let x=0;x<n;x++){
+      const kind=o.kinds[y][x],bit=o.modules[y][x],dimmed=focus!=="all"&&kind!==focus;
+      let color=view==="regions"?COLORS[kind]:view==="reserved"?(o.reserved[y][x]?"#324b72":"#eaf2ff"):(bit===1?"#111827":bit===0?"#ffffff":"#e6eaf0");
+      ctx.fillStyle=color;ctx.fillRect(x*px,y*px,px,px);
+      if(view==="mono"&&bit===null&&o.reserved[y][x]){
+        ctx.fillStyle="#b9a6d9";ctx.fillRect(x*px,y*px,Math.max(1,Math.floor(px/3)),Math.max(1,Math.floor(px/3)));
+      }
+      if(dimmed){ctx.fillStyle="rgba(255,255,255,.78)";ctx.fillRect(x*px,y*px,px,px);}
+    }
+    if($("showGrid").checked&&n<=85&&px>=7){ctx.lineWidth=0.65;ctx.strokeStyle="rgba(86,103,130,.28)";ctx.beginPath();for(let i=0;i<=n;i++){let z=i*px+.5;ctx.moveTo(z,0);ctx.lineTo(z,n*px);ctx.moveTo(0,z);ctx.lineTo(n*px,z);}ctx.stroke();}
+    if(hovered&&hovered[0]<n&&hovered[1]<n){let [x,y]=hovered;ctx.strokeStyle="#e11d48";ctx.lineWidth=Math.max(1,Math.floor(px/5));ctx.strokeRect(x*px+1,y*px+1,px-2,px-2);}
+  }
+  function inspect(x,y){if(!current||x<0||y<0||x>=current.size||y>=current.size)return;hovered=[x,y];const kind=current.kinds[y][x],bit=current.modules[y][x];$("inspector").textContent=`Coordinate: (x=${x}, y=${y})\nCategory:   ${LABELS[kind]}\nReserved:   ${current.reserved[y][x]}\nValue:      ${bit===null?"unassigned":bit===1?"dark (1)":"light (0)"}\nFor Layer 5: ${current.reserved[y][x]?"skip data placement":"available for data/ECC/remainder"}`;redraw();}
+  function updateUI(o){
+    current=o;hovered=null;$("status").className="status good";$("status").textContent=`Success: version ${o.version}-${o.ecc} has ${o.counts.data.toLocaleString()} unreserved cells, exactly matching its ${o.rawCodewords} raw codewords plus ${o.remainderBitCount} remainder bits.${o.layer3?" Layer 3 bitstream imported and validated.":" Structural layout is ready for Layer 5."}`;
+    $("statVersion").textContent=o.version+"-"+o.ecc;$("statSize").textContent=o.size+" × "+o.size;$("statAlign").textContent=o.alignmentCentres.length;$("statReserved").textContent=(o.size*o.size-o.availableDataModules).toLocaleString();$("statFree").textContent=o.availableDataModules.toLocaleString();
+    $("axisPositions").textContent=`Alignment axis coordinates: ${o.alignmentPositions.length?o.alignmentPositions.join(", "):"none (version 1)"}. The format and version slots are reserved but intentionally unset.`;
+    const l=$("legend");l.replaceChildren();for(const kind of ORDER){const el=document.createElement("div");el.className="legend-item";const left=document.createElement("span");left.className="legend-label";const sw=document.createElement("span");sw.className="swatch";sw.style.background=COLORS[kind];left.append(sw,document.createTextNode(LABELS[kind]));const count=document.createElement("strong");count.textContent=String(o.counts[kind]);el.append(left,count);l.appendChild(el);}
+    $("invariants").textContent=`Total modules: ${o.size*o.size}\nReserved: ${o.size*o.size-o.availableDataModules}\nAvailable: ${o.availableDataModules}\nRaw codewords: ${o.rawCodewords} × 8 = ${o.rawCodewords*8} bits\nRemainder bits: ${o.remainderBitCount}\nCheck: ${o.rawCodewords*8}+${o.remainderBitCount}=${o.availableDataModules}\nFormat slots: ${o.formatSlots.flat().length} (2×15)\nVersion slots: ${o.versionSlots.flat().length} (${o.version>=7?"2×18":"none"})\nFixed dark: (${o.fixedDark.join(",")})`;
+    $("jsonPreview").textContent=JSON.stringify({schema:o.schema,layer:o.layer,version:o.version,ecc:o.ecc,size:o.size,alignmentPositions:o.alignmentPositions,alignmentCentres:o.alignmentCentres,counts:o.counts,availableDataModules:o.availableDataModules,rawCodewords:o.rawCodewords,remainderBitCount:o.remainderBitCount,modules:`<${o.size}×${o.size} values: 0/1/null>`,reserved:`<${o.size}×${o.size} booleans>`,kinds:`<${o.size}×${o.size} category names>`,layer3:o.layer3?"<validated Layer 3 output>":null},null,2);
+    $("inspector").textContent="Move over or click a module in the matrix to inspect its coordinates, value and reservation.";
+    for(const id of ["downloadSvg","downloadPng","copyJson","downloadJson","copyReserved"])$(id).disabled=false;redraw();
+  }
+  function recalc(){try{let layer3=null,version=Number($("version").value),ecc=$("ecc").value;if($("inputKind").value==="json"){layer3=parseLayer3($("jsonInput").value);version=layer3.version;ecc=layer3.ecc;$("version").value=String(version);$("ecc").value=ecc;}updateUI(buildLayer4({version,ecc,layer3}));}catch(e){uiError(e.message||"Layer 4 failed.");}}
+  function changeSource(){const imp=$("inputKind").value==="json";$("jsonGroup").classList.toggle("hidden",!imp);$("version").disabled=imp;$("ecc").disabled=imp;recalc();}
+  function schedule(){clearTimeout(updateTimer);updateTimer=setTimeout(recalc,140);}
+  function downloadBlob(content,name,type){const blob=content instanceof Blob?content:new Blob([content],{type}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+  function svgString(o,kind="mono",focus="all"){
+    const p=8,n=o.size,pad=2,size=(n+pad*2)*p;let svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" role="img"><title>QR Code v${o.version} Layer 4 structural reservation map</title><desc>Debug diagram; format and version bits are not yet assigned. Not a scannable QR Code.</desc><rect width="100%" height="100%" fill="#fff"/>`;
+    for(let y=0;y<n;y++)for(let x=0;x<n;x++){
+      const v=o.modules[y][x],k=o.kinds[y][x];const color=kind==="regions"?COLORS[k]:kind==="reserved"?(o.reserved[y][x]?"#324b72":"#eaf2ff"):v===null?(o.reserved[y][x]?"#d9cce9":"#edf2f7"):v===1?"#111827":"#ffffff";
+      svg+=`<rect x="${(x+pad)*p}" y="${(y+pad)*p}" width="${p}" height="${p}" fill="${color}"/>`;
+      if(focus!=="all"&&k!==focus)svg+=`<rect x="${(x+pad)*p}" y="${(y+pad)*p}" width="${p}" height="${p}" fill="#ffffff" opacity="0.78"/>`;
+    }
+    return svg+"</svg>";
+  }
+  async function copy(str){try{await navigator.clipboard.writeText(str);}catch(_){const t=document.createElement("textarea");t.value=str;t.style.position="fixed";t.style.opacity="0";document.body.appendChild(t);t.select();document.execCommand("copy");t.remove();}}
+  for(let i=1;i<=40;i++){const op=document.createElement("option");op.value=String(i);op.textContent=`Version ${i} (${17+4*i}×${17+4*i})`;op.selected=i===2;$("version").appendChild(op);}
+  $("inputKind").addEventListener("change",changeSource);for(const id of ["version","ecc"])$(id).addEventListener("change",schedule);$("jsonInput").addEventListener("input",schedule);$("jsonFile").addEventListener("change",async()=>{const file=$("jsonFile").files?.[0];if(!file)return;try{if(file.size>6_000_000)throw Error("File exceeds the 6 MB import limit.");$("jsonInput").value=await file.text();$("importName").textContent=`Imported ${file.name} (${file.size.toLocaleString()} bytes)`;recalc();}catch(e){uiError("Import failed: "+e.message);}});
+  $("calculate").addEventListener("click",recalc);$("runTests").addEventListener("click",runChecks);
+  for(const [id,v] of [["exampleV2",2],["exampleV7",7],["exampleV40",40]])$(id).addEventListener("click",()=>{$("inputKind").value="manual";$("version").value=String(v);changeSource();});
+  for(const id of ["displayMode","highlight","showGrid"])$(id).addEventListener("change",redraw);
+  $("matrix").addEventListener("mousemove",e=>{if(!current)return;const b=e.currentTarget.getBoundingClientRect(),x=Math.floor((e.clientX-b.left)*current.size/b.width),y=Math.floor((e.clientY-b.top)*current.size/b.height);if(!hovered||hovered[0]!==x||hovered[1]!==y)inspect(x,y);});
+  $("matrix").addEventListener("mouseleave",()=>{hovered=null;redraw();});
+  $("matrix").addEventListener("click",e=>{if(!current)return;const b=e.currentTarget.getBoundingClientRect();inspect(Math.floor((e.clientX-b.left)*current.size/b.width),Math.floor((e.clientY-b.top)*current.size/b.height));});
+  $("matrix").addEventListener("keydown",e=>{if(!current)return;const pos=hovered||[0,0];if(e.key==="ArrowRight")pos[0]=Math.min(current.size-1,pos[0]+1);else if(e.key==="ArrowLeft")pos[0]=Math.max(0,pos[0]-1);else if(e.key==="ArrowDown")pos[1]=Math.min(current.size-1,pos[1]+1);else if(e.key==="ArrowUp")pos[1]=Math.max(0,pos[1]-1);else return;e.preventDefault();inspect(...pos);});
+  $("copyJson").addEventListener("click",()=>{if(current)copy(JSON.stringify(current,null,2));});
+  $("downloadJson").addEventListener("click",()=>{if(current)downloadBlob(JSON.stringify(current,null,2),`qrgen-layer4-v${current.version}-${current.ecc}.json`,"application/json");});
+  $("copyReserved").addEventListener("click",()=>{if(current)copy(current.reserved.map(row=>row.map(Number).join("")).join("\n"));});
+  $("downloadSvg").addEventListener("click",()=>{if(current)downloadBlob(svgString(current,$("displayMode").value,$("highlight").value),`qrgen-layer4-v${current.version}.svg`,"image/svg+xml");});
+  $("downloadPng").addEventListener("click",()=>{if(current)$("matrix").toBlob(b=>{if(b)downloadBlob(b,`qrgen-layer4-v${current.version}.png`,"image/png");},"image/png");});
+  window.QRgenLayer4=Object.freeze({alignmentPositions,availableModules,createLayout,parseLayer3,buildLayer4,runChecks,svgString});
+  changeSource();
+})();
+</script>
+</body>
+</html>
